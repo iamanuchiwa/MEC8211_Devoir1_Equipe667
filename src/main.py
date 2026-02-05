@@ -60,6 +60,52 @@ def solve_diffusion_schema1(N):
     
     return r, C_num, dr
 
+def solve_diffusion_schema2(N):
+    """
+    Résout l'équation 1D stationnaire avec:
+    - Dérivée seconde : Centrée (Ordre 2)
+    - Dérivée première : Centrée (Ordre 2) -> Changement ici !
+    """
+    r = np.linspace(0, R_pilier, N)
+    dr = r[1] - r[0]
+
+    A = np.zeros((N, N))
+    b = np.zeros(N)
+
+    # --- Nœuds internes (i = 1 à N-2) ---
+    # Equation avec schéma centré pour dC/dr:
+    # Coeffs issus de : (C_i+1 - 2C_i + C_i-1)/dr^2 + (1/r_i)*(C_i+1 - C_i-1)/(2dr)
+    for i in range(1, N - 1):
+        ri = r[i]
+        
+        # Nouveaux coefficients (Schéma 2)
+        coeff_im1 = 1.0 - (dr / (2.0 * ri))
+        coeff_i   = -2.0
+        coeff_ip1 = 1.0 + (dr / (2.0 * ri))
+        
+        A[i, i-1] = coeff_im1
+        A[i, i]   = coeff_i
+        A[i, i+1] = coeff_ip1
+        b[i]      = (S * dr**2) / Deff
+
+    # --- Conditions Frontières ---
+    
+    # CF au Centre (i=0) : Neumann (dC/dr = 0)
+    # ATTENTION : Pour maintenir l'ordre 2, on utilise un schéma décentré à 3 points
+    # Formule : -3*C0 + 4*C1 - 1*C2 = 0
+    A[0, 0] = -3.0
+    A[0, 1] = 4.0
+    A[0, 2] = -1.0
+    b[0]    = 0.0
+
+    # CF à la Surface (i=N-1) : Dirichlet (C = Ce)
+    A[N-1, N-1] = 1.0
+    b[N-1] = Ce
+
+    # Résolution
+    C_num = np.linalg.solve(A, b)
+    return r, C_num, dr
+
 # --- Analyse de Convergence ---
 # On teste plusieurs résolutions pour voir l'ordre de l'erreur
 N_values = [5, 10, 20, 40, 80, 160, 320]
@@ -128,4 +174,21 @@ plt.ylabel('Erreur')
 plt.title("Analyse de Convergence (Log-Log)")
 plt.grid(True, which="both", ls="-")
 plt.legend()
+plt.show()
+
+# --- Comparaison des deux schémas (Question E.c) ---
+N_test = 20  # Nombre de noeuds pour le graphique
+r1, C1, _ = solve_diffusion_schema1(N_test)
+r2, C2, _ = solve_diffusion_schema2(N_test)
+r_fine = np.linspace(0, R_pilier, 200)
+
+plt.figure(figsize=(10, 6))
+plt.plot(r_fine, solution_analytique(r_fine), 'k-', label='Analytique Exacte')
+plt.plot(r1, C1, 'bo--', label='Schéma 1 (Ordre 1)', markerfacecolor='none')
+plt.plot(r2, C2, 'rs--', label='Schéma 2 (Ordre 2)', markerfacecolor='none')
+plt.xlabel('Rayon r [m]')
+plt.ylabel('Concentration C')
+plt.title(f'Comparaison des schémas (N={N_test})')
+plt.legend()
+plt.grid(True)
 plt.show()
