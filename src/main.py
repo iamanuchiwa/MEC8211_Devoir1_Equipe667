@@ -13,7 +13,7 @@ R_pilier = 0.5      # Rayon du pilier (Diamètre = 1m)
 # --- Solution Analytique (Eq. 2) ---
 def solution_analytique(r):
     #C(r) = (S / 4Deff) * R^2 * ((r^2/R^2) - 1) + Ce
-    terme1 = (S / (4 * Deff)) * (R_pilier**2)
+    terme1 = (S * 0.25 / ( Deff)) * (R_pilier**2)
     terme2 = ((r**2) / (R_pilier**2)) - 1
     return terme1 * terme2 + Ce
 
