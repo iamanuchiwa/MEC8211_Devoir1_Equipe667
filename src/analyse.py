@@ -1,10 +1,13 @@
 import numpy as np
 import matplotlib.pyplot as plt
 import pytest
+import os
 try:
     from fonctions import *
 except:
     pass
+
+dossier_cible = "/Users/joshuantsougan/Desktop/H26/MEC8211/Devoir1/MEC8211_Devoir1_Equipe667/results"
 
 # --- 1. Exécution des simulations ---
 N_values = [10, 20, 40, 80, 160, 320]
@@ -74,6 +77,10 @@ props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 plt.gca().text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=10,
         verticalalignment='top', bbox=props)
 
+nom_fichier = "QUESTION Da.png"
+chemin_final = os.path.join(dossier_cible, nom_fichier)
+plt.savefig(chemin_final, dpi=300)
+
 plt.show()
 
 # =============================================================================
@@ -107,6 +114,11 @@ plt.ylabel('Erreur')
 plt.title('Question D.b : Convergence des erreurs avec Régression Linéaire')
 plt.grid(True, which="both", ls="-")
 plt.legend()
+
+nom_fichier = "QUESTION Db.png"
+chemin_final = os.path.join(dossier_cible, nom_fichier)
+plt.savefig(chemin_final, dpi=300)
+
 plt.show()
 
 # =============================================================================
@@ -129,6 +141,11 @@ plt.ylabel(r'Concentration $C$ [mol/m$^3$]')
 plt.title('Question E.c : Comparaison des profils de concentration')
 plt.legend()
 plt.grid(True)
+
+nom_fichier = "QUESTION Ec.png"
+chemin_final = os.path.join(dossier_cible, nom_fichier)
+plt.savefig(chemin_final, dpi=300)
+
 plt.show()
 
 # =============================================================================
@@ -143,4 +160,9 @@ plt.ylabel(r'Erreur $L_{\infty}$')
 plt.title('Comparaison de convergence : Schéma 1 vs Schéma 2')
 plt.grid(True, which="both", ls="-")
 plt.legend()
+
+nom_fichier = "QUESTION Ed.png"
+chemin_final = os.path.join(dossier_cible, nom_fichier)
+plt.savefig(chemin_final, dpi=300)
+
 plt.show()
