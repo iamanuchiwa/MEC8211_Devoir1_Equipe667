@@ -7,6 +7,12 @@ try:
 except:
     pass
 
+class parametres:
+    Deff = 1e-10        # Coefficient de diffusion effectif [m^2/s]
+    S = 2e-8            # Terme source constant [mol/m^3/s]
+    Ce = 20.0           # Concentration à la surface [mol/m^3]
+    R_pilier = 0.5      # Rayon du pilier (Diamètre = 1m)
+
 dossier_cible = "/Users/joshuantsougan/Desktop/H26/MEC8211/Devoir1/MEC8211_Devoir1_Equipe667/results"
 
 # --- 1. Exécution des simulations ---
