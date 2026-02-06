@@ -15,7 +15,6 @@ def solution_analytique(r):
     terme2 = ((r**2) / (R_pilier**2)) - 1
     return terme1 * terme2 + Ce
 
-
 def solve_diffusion_schema1(N):
     """
     Résout l'équation 1D stationnaire avec:
@@ -105,3 +104,30 @@ def solve_diffusion_schema2(N):
     # Résolution
     C_num = np.linalg.solve(A, b)
     return r, C_num, dr
+
+# =============================================================================
+# ANALYSE DE CONVERGENCE ET GÉNÉRATION DES GRAPHIQUES
+# =============================================================================
+
+def analyser_convergence(fonction_solveur, N_values):
+    """Calcule L1, L2 et Linf pour une liste de maillages."""
+    results = {'dr': [], 'L1': [], 'L2': [], 'Linf': []}
+    
+    for N in N_values:
+        r, C_num, dr = fonction_solveur(N)
+        C_exact = solution_analytique(r)
+        diff = np.abs(C_num - C_exact)
+        
+        # Calcul des 3 normes demandées à la question D.b
+        results['dr'].append(dr)
+        results['L1'].append(np.sum(diff) / N)             # Norme L1
+        results['L2'].append(np.sqrt(np.sum(diff**2) / N)) # Norme L2
+        results['Linf'].append(np.max(diff))               # Norme Linf
+        
+    return results
+
+def calculer_pente(results, metric='Linf'):
+    """Calcule la pente entre les 2 maillages les plus fins (Diapo 19)."""
+    err = results[metric]
+    dr = results['dr']
+    return np.log(err[-2] / err[-1]) / np.log(dr[-2] / dr[-1])
