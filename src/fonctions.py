@@ -116,7 +116,7 @@ def analyser_convergence(fonction_solveur, N_values):
     for N in N_values:
         r, C_num, dr = fonction_solveur(N)
         C_exact = solution_analytique(r)
-        diff = np.abs(C_num - C_exact)
+        diff = np.abs(C_num - C_exact)  #Calcul erreur de discrétisation
         
         # Calcul des 3 normes demandées à la question D.b
         results['dr'].append(dr)
