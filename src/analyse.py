@@ -15,7 +15,7 @@ class parametres:
     Ce = 20.0           # Concentration à la surface [mol/m^3]
     R_pilier = 0.5      # Rayon du pilier (Diamètre = 1m)
 
-#dossier_cible = "/Users/joshuantsougan/Desktop/H26/MEC8211/Devoir1/MEC8211_Devoir1_Equipe667/results"
+# Création du dossier dans results avec horodatage
 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
 repo_root = Path(__file__).parent.parent
 results_dir = repo_root / "results" / f"{timestamp}"
@@ -91,7 +91,6 @@ plt.gca().text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=10,
 
 
 nom_fichier = f"QUESTION_Da_{timestamp}.png"
-#chemin_final = os.path.join(dossier_cible, nom_fichier)
 chemin_final = results_dir / nom_fichier
 plt.savefig(chemin_final, dpi=300)
 
@@ -130,7 +129,6 @@ plt.grid(True, which="both", ls="-")
 plt.legend()
 
 nom_fichier = f"QUESTION_Db_{timestamp}.png"
-#chemin_final = os.path.join(dossier_cible, nom_fichier)
 chemin_final = results_dir / nom_fichier
 plt.savefig(chemin_final, dpi=300)
 
@@ -160,7 +158,6 @@ plt.legend()
 
 # Sauvegarde
 nom_fichier = f"QUESTION_Eb_{timestamp}.png"
-#chemin_final = os.path.join(dossier_cible, nom_fichier)
 chemin_final = results_dir / nom_fichier
 plt.savefig(chemin_final, dpi=300)
 
@@ -190,7 +187,6 @@ plt.legend()
 plt.grid(True)
 
 nom_fichier = f"QUESTION_Ec_{timestamp}.png"
-#chemin_final = os.path.join(dossier_cible, nom_fichier)
 chemin_final = results_dir / nom_fichier
 plt.savefig(chemin_final, dpi=300)
 
@@ -210,7 +206,6 @@ plt.grid(True, which="both", ls="-")
 plt.legend()
 
 nom_fichier = f"QUESTION_Ed_{timestamp}.png"
-#chemin_final = os.path.join(dossier_cible, nom_fichier)
 chemin_final = results_dir / nom_fichier
 plt.savefig(chemin_final, dpi=300)
 
