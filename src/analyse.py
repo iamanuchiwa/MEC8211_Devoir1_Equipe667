@@ -85,9 +85,9 @@ props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 plt.gca().text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=10,
         verticalalignment='top', bbox=props)
 
-
+# Sauvegarde du graphique
 nom_f_da = f"QUESTION_Da_{timestamp}.png"
-sauv_res(plt.figure(1), results_dir, nom_f_da)
+sauvgarde_resultat(plt.figure(1), results_dir, nom_f_da)
 
 # =============================================================================
 # GRAPHIQUE 2 : Question D.b (Les 3 erreurs du Schéma 1 avec Régression)
@@ -121,9 +121,9 @@ plt.title('Question D.b : Convergence des erreurs avec Régression Linéaire')
 plt.grid(True, which="both", ls="-")
 plt.legend()
 
-# Sauvegarde
+# Sauvegarde du graphique
 nom_f_db = f"QUESTION_Db_{timestamp}.png"
-sauv_res(plt.figure(2), results_dir, nom_f_db)
+sauvgarde_resultat(plt.figure(2), results_dir, nom_f_db)
 
 # =============================================================================
 # GRAPHIQUE 3 : QUESTION E.b) (Vérification du Schéma 2 - Les 3 normes)
@@ -147,9 +147,9 @@ plt.title('Question E.b : Vérification du Schéma 2 (Erreurs vs Delta r)')
 plt.grid(True, which="both", ls="-")
 plt.legend()
 
-# Sauvegarde
+# Sauvegarde du graphique
 nom_f_eb = f"QUESTION_Eb_{timestamp}.png"
-sauv_res(plt.figure(3), results_dir, nom_f_eb)
+sauvgarde_resultat(plt.figure(3), results_dir, nom_f_eb)
 
 print("Graphique E.b généré : Le schéma est 'exact' pour ce problème, d'où l'erreur machine.")
 
@@ -174,8 +174,9 @@ plt.title('Question E.c : Comparaison des profils de concentration')
 plt.legend()
 plt.grid(True)
 
+# Sauvegarde du graphique
 nom_f_ec = f"QUESTION_Ec_{timestamp}.png"
-sauv_res(plt.figure(4), results_dir, nom_f_ec)
+sauvgarde_resultat(plt.figure(4), results_dir, nom_f_ec)
 
 # =============================================================================
 # GRAPHIQUE 5 : Comparaison de Performance (Schéma 1 vs Schéma 2)
@@ -190,7 +191,8 @@ plt.title('Comparaison de convergence : Schéma 1 vs Schéma 2')
 plt.grid(True, which="both", ls="-")
 plt.legend()
 
+# Sauvegarde du graphique
 nom_f_ed = f"QUESTION_Ed_{timestamp}.png"
-sauv_res(plt.figure(5), results_dir, nom_f_ed)
+sauvgarde_resultat(plt.figure(5), results_dir, nom_f_ed)
 
 plt.show()
