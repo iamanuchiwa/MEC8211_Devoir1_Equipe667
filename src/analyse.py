@@ -76,7 +76,7 @@ plt.title(f'Question D.a) : Profil de concentration stationnaire\n(Comparaison A
 plt.legend(fontsize=12)
 plt.grid(True, linestyle='--', alpha=0.7)
 
-# Ajout d'une boîte de texte avec les paramètres directement sur le graphe (Bonus présentation !)
+# Ajout d'une boîte de texte avec les paramètres directement sur le graphe
 textstr = '\n'.join((
     r'$D_{eff}=%.1e$' % (Deff, ),
     r'$S=%.1e$' % (S, ),
@@ -139,7 +139,7 @@ plt.loglog(res2['dr'], res2['L2'], 'g-s', label='Erreur L2 (Schéma 2)')
 plt.loglog(res2['dr'], res2['Linf'], 'r-o', label='Erreur Linf (Schéma 2)')
 
 # 2. Ajout d'une ligne de référence "Précision Machine"
-# La précision standard (float64) est environ 2e-16, mais les opérations accumulent l'erreur vers 1e-14/1e-13.
+# La précision standard (float64) est environ 2e-16, mais les opérations accumulent l'erreur vers 1e-14/1e-12.
 plt.axhline(y=1e-14, color='k', linestyle='--', alpha=0.5, label='Seuil Précision Machine')
 
 plt.xlabel(r'Pas spatial $\Delta r$ [m]')
