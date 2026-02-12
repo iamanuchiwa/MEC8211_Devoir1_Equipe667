@@ -1,7 +1,9 @@
 import numpy as np
 import matplotlib.pyplot as plt
 #import pytest
-import os
+#import os
+from pathlib import Path
+import datetime
 try:
     from fonctions import *
 except:
@@ -13,7 +15,11 @@ class parametres:
     Ce = 20.0           # Concentration à la surface [mol/m^3]
     R_pilier = 0.5      # Rayon du pilier (Diamètre = 1m)
 
-dossier_cible = "/Users/joshuantsougan/Desktop/H26/MEC8211/Devoir1/MEC8211_Devoir1_Equipe667/results"
+#dossier_cible = "/Users/joshuantsougan/Desktop/H26/MEC8211/Devoir1/MEC8211_Devoir1_Equipe667/results"
+timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+repo_root = Path(__file__).parent.parent
+results_dir = repo_root / "results" / f"{timestamp}"
+results_dir.mkdir(exist_ok=True)  # Crée le dossier s'il n'existe pas
 
 # --- 1. Exécution des simulations ---
 N_values = [10, 20, 40, 80, 160, 320]
@@ -83,8 +89,10 @@ props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 plt.gca().text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=10,
         verticalalignment='top', bbox=props)
 
-nom_fichier = "QUESTION Da.png"
-chemin_final = os.path.join(dossier_cible, nom_fichier)
+
+nom_fichier = f"QUESTION_Da_{timestamp}.png"
+#chemin_final = os.path.join(dossier_cible, nom_fichier)
+chemin_final = results_dir / nom_fichier
 plt.savefig(chemin_final, dpi=300)
 
 plt.show()
@@ -121,8 +129,9 @@ plt.title('Question D.b : Convergence des erreurs avec Régression Linéaire')
 plt.grid(True, which="both", ls="-")
 plt.legend()
 
-nom_fichier = "QUESTION Db.png"
-chemin_final = os.path.join(dossier_cible, nom_fichier)
+nom_fichier = f"QUESTION_Db_{timestamp}.png"
+#chemin_final = os.path.join(dossier_cible, nom_fichier)
+chemin_final = results_dir / nom_fichier
 plt.savefig(chemin_final, dpi=300)
 
 plt.show()
@@ -150,8 +159,9 @@ plt.grid(True, which="both", ls="-")
 plt.legend()
 
 # Sauvegarde
-nom_fichier = "QUESTION Eb.png"
-chemin_final = os.path.join(dossier_cible, nom_fichier)
+nom_fichier = f"QUESTION_Eb_{timestamp}.png"
+#chemin_final = os.path.join(dossier_cible, nom_fichier)
+chemin_final = results_dir / nom_fichier
 plt.savefig(chemin_final, dpi=300)
 
 plt.show()
@@ -179,8 +189,9 @@ plt.title('Question E.c : Comparaison des profils de concentration')
 plt.legend()
 plt.grid(True)
 
-nom_fichier = "QUESTION Ec.png"
-chemin_final = os.path.join(dossier_cible, nom_fichier)
+nom_fichier = f"QUESTION_Ec_{timestamp}.png"
+#chemin_final = os.path.join(dossier_cible, nom_fichier)
+chemin_final = results_dir / nom_fichier
 plt.savefig(chemin_final, dpi=300)
 
 plt.show()
@@ -198,8 +209,9 @@ plt.title('Comparaison de convergence : Schéma 1 vs Schéma 2')
 plt.grid(True, which="both", ls="-")
 plt.legend()
 
-nom_fichier = "QUESTION Ed.png"
-chemin_final = os.path.join(dossier_cible, nom_fichier)
+nom_fichier = f"QUESTION_Ed_{timestamp}.png"
+#chemin_final = os.path.join(dossier_cible, nom_fichier)
+chemin_final = results_dir / nom_fichier
 plt.savefig(chemin_final, dpi=300)
 
 plt.show()
