@@ -43,8 +43,8 @@ print("-" * 60)
 # =============================================================================
 
 # 1. Choix d'un maillage représentatif pour la figure
-n_demo = 20  # On choisit N =20 pour avoir des points clairs
-r_num, C_num, dr_demo = solve_diffusion_schema1(n_demo)
+N_demo = 20  # On choisit N =20 pour avoir des points clairs
+r_num, C_num, dr_demo = solve_diffusion_schema1(N_demo)
 
 # 2. Affichage des paramètres dans la console (requis par la question)
 print("="*40)
@@ -54,7 +54,7 @@ print(f"Coefficient diffusion (Deff) : {Deff:.1e} m^2/s")
 print(f"Terme source (S)             : {S:.1e} mol/m^3/s")
 print(f"Concentration surface (Ce)   : {Ce:.1f} mol/m^3")
 print(f"Rayon du pilier (R)          : {R_pilier:.1f} m")
-print(f"Nombre de nœuds (N)          : {n_demo}")
+print(f"Nombre de nœuds (N)          : {N_demo}")
 print(f"Pas spatial (dr)             : {dr_demo:.4f} m")
 print("="*40)
 
@@ -66,7 +66,7 @@ r_fine = np.linspace(0, R_pilier, 200)
 plt.plot(r_fine, solution_analytique(r_fine), 'k-', linewidth=2, label='Solution Analytique (Eq. 2)')
 
 # Points Numériques Schéma 1 (Points)
-plt.plot(r_num, C_num, 'bo', markersize=8, label=f'Solution Numérique (Schéma 1, N={n_demo})')
+plt.plot(r_num, C_num, 'bo', markersize=8, label=f'Solution Numérique (Schéma 1, N={N_demo})')
 
 # Mise en forme
 plt.xlabel('Rayon r [m]', fontsize=12)
@@ -80,7 +80,7 @@ textstr = '\n'.join((
     r'$D_{eff}=%.1e$' % (Deff, ),
     r'$S=%.1e$' % (S, ),
     r'$C_e=%.1f$' % (Ce, ),
-    r'$N=%d$' % (n_demo, )))
+    r'$N=%d$' % (N_demo, )))
 props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 plt.gca().text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=10,
         verticalalignment='top', bbox=props)
