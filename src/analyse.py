@@ -63,7 +63,7 @@ print(f"Pas spatial (dr)             : {dr_demo:.4f} m")
 print("="*40)
 
 # 3. Tracé du graphique
-plt.figure(figsize=(10, 6))
+plt.figure(1,figsize=(10, 6))
 
 # Courbe Analytique (Ligne continue)
 r_fine = np.linspace(0, R_pilier, 200)
@@ -90,16 +90,15 @@ plt.gca().text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=10,
         verticalalignment='top', bbox=props)
 
 
-nom_fichier = f"QUESTION_Da_{timestamp}.png"
-chemin_final = results_dir / nom_fichier
-plt.savefig(chemin_final, dpi=300)
+nom_f_da = f"QUESTION_Da_{timestamp}.png"
+sauv_res(plt.figure(1), results_dir, nom_f_da)
 
-plt.show()
+#plt.show()
 
 # =============================================================================
 # GRAPHIQUE 2 : Question D.b (Les 3 erreurs du Schéma 1 avec Régression)
 # =============================================================================
-plt.figure(figsize=(10, 6))
+plt.figure(2, figsize=(10, 6))
 
 # 1. Tracé des points expérimentaux
 plt.loglog(res1['dr'], res1['L1'], 'b-^', label='Erreur L1')
@@ -128,16 +127,16 @@ plt.title('Question D.b : Convergence des erreurs avec Régression Linéaire')
 plt.grid(True, which="both", ls="-")
 plt.legend()
 
-nom_fichier = f"QUESTION_Db_{timestamp}.png"
-chemin_final = results_dir / nom_fichier
-plt.savefig(chemin_final, dpi=300)
+# Sauvegarde
+nom_f_db = f"QUESTION_Db_{timestamp}.png"
+sauv_res(plt.figure(2), results_dir, nom_f_db)
 
-plt.show()
+#plt.show()
 
 # =============================================================================
 # GRAPHIQUE 3 : QUESTION E.b) (Vérification du Schéma 2 - Les 3 normes)
 # =============================================================================
-plt.figure(figsize=(10, 6))
+plt.figure(3,figsize=(10, 6))
 
 # 1. Tracé des 3 normes pour le Schéma 2
 # Note : Comme l'erreur est de l'ordre de la précision machine (~1e-14),
@@ -157,9 +156,8 @@ plt.grid(True, which="both", ls="-")
 plt.legend()
 
 # Sauvegarde
-nom_fichier = f"QUESTION_Eb_{timestamp}.png"
-chemin_final = results_dir / nom_fichier
-plt.savefig(chemin_final, dpi=300)
+nom_f_eb = f"QUESTION_Eb_{timestamp}.png"
+sauv_res(plt.figure(3), results_dir, nom_f_eb)
 
 plt.show()
 
@@ -168,7 +166,7 @@ print("Graphique E.b généré : Le schéma est 'exact' pour ce problème, d'où
 # =============================================================================
 # GRAPHIQUE 4 : Question E.c (Comparaison des Profils)
 # =============================================================================
-plt.figure(figsize=(10, 6))
+plt.figure(4, figsize=(10, 6))
 # Courbe analytique fine
 r_fine = np.linspace(0, R_pilier, 200)
 plt.plot(r_fine, solution_analytique(r_fine), 'k-', label='Analytique')
@@ -186,16 +184,15 @@ plt.title('Question E.c : Comparaison des profils de concentration')
 plt.legend()
 plt.grid(True)
 
-nom_fichier = f"QUESTION_Ec_{timestamp}.png"
-chemin_final = results_dir / nom_fichier
-plt.savefig(chemin_final, dpi=300)
+nom_f_ec = f"QUESTION_Ec_{timestamp}.png"
+sauv_res(plt.figure(4), results_dir, nom_f_ec)
 
-plt.show()
+#plt.show()
 
 # =============================================================================
 # GRAPHIQUE 5 : Comparaison de Performance (Schéma 1 vs Schéma 2)
 # =============================================================================
-plt.figure(figsize=(10, 6))
+plt.figure(5, figsize=(10, 6))
 plt.loglog(res1['dr'], res1['Linf'], 'b-o', label=f'Schéma 1 (Pente={pente1:.2f})')
 plt.loglog(res2['dr'], res2['Linf'], 'r-s', label='Schéma 2 (Erreur Machine)')
 
@@ -205,8 +202,7 @@ plt.title('Comparaison de convergence : Schéma 1 vs Schéma 2')
 plt.grid(True, which="both", ls="-")
 plt.legend()
 
-nom_fichier = f"QUESTION_Ed_{timestamp}.png"
-chemin_final = results_dir / nom_fichier
-plt.savefig(chemin_final, dpi=300)
+nom_f_ed = f"QUESTION_Ed_{timestamp}.png"
+sauv_res(plt.figure(5), results_dir, nom_f_ed)
 
 plt.show()

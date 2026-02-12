@@ -131,3 +131,12 @@ def calculer_pente(results, metric='Linf'):
     err = results[metric]
     dr = results['dr']
     return np.log(err[-2] / err[-1]) / np.log(dr[-2] / dr[-1])
+
+# =============================================================================
+# FONCTIONS DE SAUVEGARDE DES RÉSULTATS
+# =============================================================================
+def sauv_res(fig, results_dir, nom_fichier):
+    chemin_final = results_dir / nom_fichier
+    fig.savefig(chemin_final, dpi=300)
+    return ()
+
