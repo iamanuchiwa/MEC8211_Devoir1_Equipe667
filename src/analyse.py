@@ -2,8 +2,6 @@ import datetime
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-#import pytest
-#import os
 
 try:
     from fonctions import *
