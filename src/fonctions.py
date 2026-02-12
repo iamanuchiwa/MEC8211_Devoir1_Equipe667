@@ -4,10 +4,7 @@ Ce programme contient les fonctions necessaires à la résolution du profil de c
     - Résolution numérique
     - Analyse de convergence
 """
-
 import numpy as np
-import matplotlib.pyplot as plt
-import math
 
 # --- Paramètres Physiques ---
 Deff = 1e-10        # Coefficient de diffusion effectif [m^2/s]
