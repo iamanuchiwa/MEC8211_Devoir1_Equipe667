@@ -128,7 +128,38 @@ plt.savefig(chemin_final, dpi=300)
 plt.show()
 
 # =============================================================================
-# GRAPHIQUE 3 : Question E.c (Comparaison des Profils)
+# GRAPHIQUE 3 : QUESTION E.b) (Vérification du Schéma 2 - Les 3 normes)
+# =============================================================================
+plt.figure(figsize=(10, 6))
+
+# 1. Tracé des 3 normes pour le Schéma 2
+# Note : Comme l'erreur est de l'ordre de la précision machine (~1e-14),
+# les courbes seront probablement "bruiteuses" ou plates, c'est normal.
+plt.loglog(res2['dr'], res2['L1'], 'b-^', label='Erreur L1 (Schéma 2)')
+plt.loglog(res2['dr'], res2['L2'], 'g-s', label='Erreur L2 (Schéma 2)')
+plt.loglog(res2['dr'], res2['Linf'], 'r-o', label='Erreur Linf (Schéma 2)')
+
+# 2. Ajout d'une ligne de référence "Précision Machine"
+# La précision standard (float64) est environ 2e-16, mais les opérations accumulent l'erreur vers 1e-14/1e-13.
+plt.axhline(y=1e-14, color='k', linestyle='--', alpha=0.5, label='Seuil Précision Machine')
+
+plt.xlabel(r'Pas spatial $\Delta r$ [m]')
+plt.ylabel('Erreur')
+plt.title('Question E.b : Vérification du Schéma 2 (Erreurs vs Delta r)')
+plt.grid(True, which="both", ls="-")
+plt.legend()
+
+# Sauvegarde
+nom_fichier = "QUESTION Eb.png"
+chemin_final = os.path.join(dossier_cible, nom_fichier)
+plt.savefig(chemin_final, dpi=300)
+
+plt.show()
+
+print("Graphique E.b généré : Le schéma est 'exact' pour ce problème, d'où l'erreur machine.")
+
+# =============================================================================
+# GRAPHIQUE 4 : Question E.c (Comparaison des Profils)
 # =============================================================================
 plt.figure(figsize=(10, 6))
 # Courbe analytique fine
@@ -155,7 +186,7 @@ plt.savefig(chemin_final, dpi=300)
 plt.show()
 
 # =============================================================================
-# GRAPHIQUE 4 : Comparaison de Performance (Schéma 1 vs Schéma 2)
+# GRAPHIQUE 5 : Comparaison de Performance (Schéma 1 vs Schéma 2)
 # =============================================================================
 plt.figure(figsize=(10, 6))
 plt.loglog(res1['dr'], res1['Linf'], 'b-o', label=f'Schéma 1 (Pente={pente1:.2f})')
