@@ -2,14 +2,9 @@ import datetime
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
-<<<<<<< HEAD
 #import pytest
 #import os
 
-=======
-from pathlib import Path
-import datetime
->>>>>>> 239703c4449611352fcd8f5e00157a6dc0f77110
 try:
     from fonctions import *
 except:
