@@ -144,6 +144,7 @@ def calculer_pente(results, metric='Linf'):
 # FONCTIONS DE SAUVEGARDE DES RÉSULTATS
 # =============================================================================
 def sauv_res(fig, results_dir, nom_fichier):
+    """Sauvgarde une figure dans le dossier "results" avec un nom spécifique."""
     chemin_final = results_dir / nom_fichier
     fig.savefig(chemin_final, dpi=300)
     return ()
