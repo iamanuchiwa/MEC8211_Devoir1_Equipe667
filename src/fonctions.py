@@ -147,4 +147,3 @@ def sauv_res(fig, results_dir, nom_fichier):
     chemin_final = results_dir / nom_fichier
     fig.savefig(chemin_final, dpi=300)
     return ()
-

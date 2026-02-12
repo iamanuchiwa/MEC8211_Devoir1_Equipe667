@@ -1,18 +1,15 @@
-import datetime 
+import datetime
+
 from pathlib import Path
+
 import numpy as np
+
 import matplotlib.pyplot as plt
 
 try:
     from fonctions import *
 except:
     pass
-
-class parametres:
-    Deff = 1e-10        # Coefficient de diffusion effectif [m^2/s]
-    S = 2e-8            # Terme source constant [mol/m^3/s]
-    Ce = 20.0           # Concentration à la surface [mol/m^3]
-    R_pilier = 0.5      # Rayon du pilier (Diamètre = 1m)
 
 # Création du dossier dans results avec horodatage
 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
