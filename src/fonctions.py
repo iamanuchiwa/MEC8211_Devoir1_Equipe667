@@ -117,19 +117,19 @@ def solve_diffusion_schema2(N):
 # ANALYSE DE CONVERGENCE ET GÉNÉRATION DES GRAPHIQUES
 # =============================================================================
 
-def analyser_convergence(fonction_solveur, N_values):
+def analyser_convergence(fonction_solveur, n_values):
     """Calcule L1, L2 et Linf pour une liste de maillages."""
     results = {'dr': [], 'L1': [], 'L2': [], 'Linf': []}
     
-    for N in N_values:
-        r, C_num, dr = fonction_solveur(N)
+    for n in n_values:
+        r, C_num, dr = fonction_solveur(n)
         C_exact = solution_analytique(r)
         diff = np.abs(C_num - C_exact)  #Calcul erreur de discrétisation
         
         # Calcul des 3 normes demandées à la question D.b
         results['dr'].append(dr)
-        results['L1'].append(np.sum(diff) / N)             # Norme L1
-        results['L2'].append(np.sqrt(np.sum(diff**2) / N)) # Norme L2
+        results['L1'].append(np.sum(diff) / n)             # Norme L1
+        results['L2'].append(np.sqrt(np.sum(diff**2) / n)) # Norme L2
         results['Linf'].append(np.max(diff))               # Norme Linf
         
     return results
