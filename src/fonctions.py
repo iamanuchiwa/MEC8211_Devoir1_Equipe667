@@ -115,7 +115,8 @@ def solve_diffusion_schema2(N):
 # =============================================================================
 
 def analyser_convergence(fonction_solveur, n_values):
-    """Calcule L1, L2 et Linf pour une liste de maillages."""
+    """Calcule L1, L2 et Linf pour une liste de maillages.
+    """
     results = {'dr': [], 'L1': [], 'L2': [], 'Linf': []}
     # Boucle sur les différentes tailles de maillage
     for n in n_values:
@@ -131,7 +132,8 @@ def analyser_convergence(fonction_solveur, n_values):
     return results
 
 def calculer_pente(results, metric='Linf'):
-    """Calcule la pente entre les 2 maillages les plus fins (Diapo 19)."""
+    """Calcule la pente entre les 2 maillages les plus fins (Diapo 19).
+    """
     err = results[metric]
     dr = results['dr']
     return np.log(err[-2] / err[-1]) / np.log(dr[-2] / dr[-1])
@@ -140,7 +142,8 @@ def calculer_pente(results, metric='Linf'):
 # FONCTIONS DE SAUVEGARDE DES RÉSULTATS
 # =============================================================================
 def sauvgarde_resultat(fig, results_dir, nom_fichier):
-    """Sauvgarde une figure dans le dossier "results" avec un nom spécifique."""
+    """Sauvgarde une figure dans le dossier "results" avec un nom spécifique.
+    """
     chemin_final = results_dir / nom_fichier
     fig.savefig(chemin_final, dpi=300)
     return ()
