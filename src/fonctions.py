@@ -78,9 +78,9 @@ def solve_diffusion_schema2(N):
         ri = r[i]
         
         # Nouveaux coefficients (Schéma 2)
-        coeff_im1 = 1.0 - (dr / (2.0 * ri))
+        coeff_im1 = 1.0 - (dr * 0.5 / ri)
         coeff_i   = -2.0
-        coeff_ip1 = 1.0 + (dr / (2.0 * ri))
+        coeff_ip1 = 1.0 + (dr * 0.5 / ri)
         
         A[i, i-1] = coeff_im1
         A[i, i]   = coeff_i
