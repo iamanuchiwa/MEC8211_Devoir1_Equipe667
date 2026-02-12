@@ -1,3 +1,10 @@
+"""
+Ce programme contient les fonctions necessaires à la résolution du profil de concentration:
+    - Résolution analytique
+    - Résolution numérique
+    - Analyse de convergence
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import math
@@ -10,6 +17,10 @@ R_pilier = 0.5      # Rayon du pilier (Diamètre = 1m)
 
 # --- Solution Analytique (Eq. 2) ---
 def solution_analytique(r):
+    """
+    Retourne la concentration en un point r à partir de la solution analytique
+        - r: rayon auquel calculer la concentration
+    """
     #C(r) = (S / 4Deff) * R^2 * ((r^2/R^2) - 1) + Ce
     terme1 = (S * 0.25 / ( Deff)) * (R_pilier**2)
     terme2 = ((r**2) / (R_pilier**2)) - 1
@@ -36,7 +47,7 @@ def solve_diffusion_schema1(N):
         
         # Remplissage de la matrice A
         A[i, i-1] = 1.0
-        A[i, i]   = -2.0 - (dr / ri) 
+        A[i, i] = -2.0 - (dr / ri) 
         A[i, i+1] = 1.0 + (dr / ri)
         
         # Remplissage du membre de droite b
