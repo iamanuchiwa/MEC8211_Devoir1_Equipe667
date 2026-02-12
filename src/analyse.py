@@ -1,3 +1,7 @@
+"""
+Ce programme contient la résolution du problème et les tracés demandés dans l'énoncé du devoir 1.
+"""
+
 import datetime
 
 from pathlib import Path
