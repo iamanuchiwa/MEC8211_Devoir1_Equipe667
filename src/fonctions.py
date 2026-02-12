@@ -75,7 +75,6 @@ def solve_diffusion_schema2(N):
     """
     r = np.linspace(0, R_pilier, N)
     dr = r[1] - r[0]
-
     A = np.zeros((N, N))
     b = np.zeros(N)
 
@@ -84,12 +83,10 @@ def solve_diffusion_schema2(N):
     # Coeffs issus de : (C_i+1 - 2C_i + C_i-1)/dr^2 + (1/r_i)*(C_i+1 - C_i-1)/(2dr)
     for i in range(1, N - 1):
         ri = r[i]
-        
         # Nouveaux coefficients (Schéma 2)
         coeff_im1 = 1.0 - (dr * 0.5 / ri)
         coeff_i   = -2.0
         coeff_ip1 = 1.0 + (dr * 0.5 / ri)
-        
         A[i, i-1] = coeff_im1
         A[i, i]   = coeff_i
         A[i, i+1] = coeff_ip1
@@ -120,7 +117,7 @@ def solve_diffusion_schema2(N):
 def analyser_convergence(fonction_solveur, n_values):
     """Calcule L1, L2 et Linf pour une liste de maillages."""
     results = {'dr': [], 'L1': [], 'L2': [], 'Linf': []}
-    
+    # Boucle sur les différentes tailles de maillage
     for n in n_values:
         r, C_num, dr = fonction_solveur(n)
         C_exact = solution_analytique(r)
@@ -131,7 +128,6 @@ def analyser_convergence(fonction_solveur, n_values):
         results['L1'].append(np.sum(diff) / n)             # Norme L1
         results['L2'].append(np.sqrt(np.sum(diff**2) / n)) # Norme L2
         results['Linf'].append(np.max(diff))               # Norme Linf
-        
     return results
 
 def calculer_pente(results, metric='Linf'):
@@ -143,7 +139,7 @@ def calculer_pente(results, metric='Linf'):
 # =============================================================================
 # FONCTIONS DE SAUVEGARDE DES RÉSULTATS
 # =============================================================================
-def sauv_res(fig, results_dir, nom_fichier):
+def sauvgarde_resultat(fig, results_dir, nom_fichier):
     """Sauvgarde une figure dans le dossier "results" avec un nom spécifique."""
     chemin_final = results_dir / nom_fichier
     fig.savefig(chemin_final, dpi=300)
