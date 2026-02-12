@@ -2,9 +2,14 @@ import datetime
 from pathlib import Path
 import numpy as np
 import matplotlib.pyplot as plt
+<<<<<<< HEAD
 #import pytest
 #import os
 
+=======
+from pathlib import Path
+import datetime
+>>>>>>> 239703c4449611352fcd8f5e00157a6dc0f77110
 try:
     from fonctions import *
 except:
@@ -23,14 +28,14 @@ results_dir = repo_root / "results" / f"{timestamp}"
 results_dir.mkdir(exist_ok=True)  # Crée le dossier s'il n'existe pas
 
 # --- 1. Exécution des simulations ---
-N_values = [10, 20, 40, 80, 160, 320]
+n_values = [10, 20, 40, 80, 160, 320]
 
 print("Analyse du Schéma 1 (Ordre 1)...")
-res1 = analyser_convergence(solve_diffusion_schema1, N_values)
+res1 = analyser_convergence(solve_diffusion_schema1, n_values)
 pente1 = calculer_pente(res1, 'Linf')
 
 print("Analyse du Schéma 2 (Ordre 2)...")
-res2 = analyser_convergence(solve_diffusion_schema2, N_values)
+res2 = analyser_convergence(solve_diffusion_schema2, n_values)
 pente2 = calculer_pente(res2, 'Linf')
 # Note: Pente inutile pour Schéma 2 ici car l'erreur est ~3e-12 (précision machine)
 
@@ -48,8 +53,8 @@ print("-" * 60)
 # =============================================================================
 
 # 1. Choix d'un maillage représentatif pour la figure
-N_demo = 20  # On choisit N=20 pour avoir des points clairs
-r_num, C_num, dr_demo = solve_diffusion_schema1(N_demo)
+n_demo = 20  # On choisit N =20 pour avoir des points clairs
+r_num, C_num, dr_demo = solve_diffusion_schema1(n_demo)
 
 # 2. Affichage des paramètres dans la console (requis par la question)
 print("="*40)
@@ -59,7 +64,7 @@ print(f"Coefficient diffusion (Deff) : {Deff:.1e} m^2/s")
 print(f"Terme source (S)             : {S:.1e} mol/m^3/s")
 print(f"Concentration surface (Ce)   : {Ce:.1f} mol/m^3")
 print(f"Rayon du pilier (R)          : {R_pilier:.1f} m")
-print(f"Nombre de nœuds (N)          : {N_demo}")
+print(f"Nombre de nœuds (N)          : {n_demo}")
 print(f"Pas spatial (dr)             : {dr_demo:.4f} m")
 print("="*40)
 
@@ -71,7 +76,7 @@ r_fine = np.linspace(0, R_pilier, 200)
 plt.plot(r_fine, solution_analytique(r_fine), 'k-', linewidth=2, label='Solution Analytique (Eq. 2)')
 
 # Points Numériques Schéma 1 (Points)
-plt.plot(r_num, C_num, 'bo', markersize=8, label=f'Solution Numérique (Schéma 1, N={N_demo})')
+plt.plot(r_num, C_num, 'bo', markersize=8, label=f'Solution Numérique (Schéma 1, N={n_demo})')
 
 # Mise en forme
 plt.xlabel('Rayon r [m]', fontsize=12)
@@ -85,7 +90,7 @@ textstr = '\n'.join((
     r'$D_{eff}=%.1e$' % (Deff, ),
     r'$S=%.1e$' % (S, ),
     r'$C_e=%.1f$' % (Ce, ),
-    r'$N=%d$' % (N_demo, )))
+    r'$N=%d$' % (n_demo, )))
 props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
 plt.gca().text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=10,
         verticalalignment='top', bbox=props)
@@ -93,8 +98,6 @@ plt.gca().text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=10,
 
 nom_f_da = f"QUESTION_Da_{timestamp}.png"
 sauv_res(plt.figure(1), results_dir, nom_f_da)
-
-#plt.show()
 
 # =============================================================================
 # GRAPHIQUE 2 : Question D.b (Les 3 erreurs du Schéma 1 avec Régression)
@@ -132,8 +135,6 @@ plt.legend()
 nom_f_db = f"QUESTION_Db_{timestamp}.png"
 sauv_res(plt.figure(2), results_dir, nom_f_db)
 
-#plt.show()
-
 # =============================================================================
 # GRAPHIQUE 3 : QUESTION E.b) (Vérification du Schéma 2 - Les 3 normes)
 # =============================================================================
@@ -160,8 +161,6 @@ plt.legend()
 nom_f_eb = f"QUESTION_Eb_{timestamp}.png"
 sauv_res(plt.figure(3), results_dir, nom_f_eb)
 
-plt.show()
-
 print("Graphique E.b généré : Le schéma est 'exact' pour ce problème, d'où l'erreur machine.")
 
 # =============================================================================
@@ -187,8 +186,6 @@ plt.grid(True)
 
 nom_f_ec = f"QUESTION_Ec_{timestamp}.png"
 sauv_res(plt.figure(4), results_dir, nom_f_ec)
-
-#plt.show()
 
 # =============================================================================
 # GRAPHIQUE 5 : Comparaison de Performance (Schéma 1 vs Schéma 2)
