@@ -10,10 +10,7 @@ import numpy as np
 
 import matplotlib.pyplot as plt
 
-try:
-    from fonctions import *
-except:
-    pass
+from fonctions import *
 
 # Création du dossier dans results avec horodatage
 timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
