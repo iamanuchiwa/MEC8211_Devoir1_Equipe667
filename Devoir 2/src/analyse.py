@@ -1,199 +1,156 @@
 """
-Ce programme contient la résolution du problème et les tracés demandés dans l'énoncé du devoir 1.
+Fichier : analyse.py
+Script d'exécution principal qui génère les graphiques du devoir.
+Importe les outils depuis le fichier fonctions.py.
 """
-
-import datetime
-
-from pathlib import Path
-
 import numpy as np
-
 import matplotlib.pyplot as plt
 
-from fonctions import *
+# Importation depuis votre fichier fonctions.py
+from fonctions import solve_diffusion_schema2, generer_fonctions_mms
 
-# Création du dossier dans results avec horodatage
-timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-repo_root = Path(__file__).parent.parent
-results_dir = repo_root / "results" / f"{timestamp}"
-results_dir.mkdir(exist_ok=True)  # Crée le dossier s'il n'existe pas
+# --- Préparation des fonctions MMS ---
+f_C_mms, f_source, f_C_dirichlet, params_mms_dict = generer_fonctions_mms()
 
-# --- 1. Exécution des simulations ---
-n_values = [10, 20, 40, 80, 160, 320]
 
-print("Analyse du Schéma 1 (Ordre 1)...")
-res1 = analyser_convergence(solve_diffusion_schema1, n_values)
-pente1 = calculer_pente(res1, 'Linf')
+# =========================================================
+# QUESTION c) TRACÉ DES PROFILS MMS
+# =========================================================
+print("Génération des graphiques MMS (Question c)...")
+tdom = np.linspace(0, 5, 50)
+rdom = np.linspace(0, 1, 50)
+ti, ri = np.meshgrid(tdom, rdom, indexing='ij')
 
-print("Analyse du Schéma 2 (Ordre 2)...")
-res2 = analyser_convergence(solve_diffusion_schema2, n_values)
-pente2 = calculer_pente(res2, 'Linf')
-# Note: Pente inutile pour Schéma 2 ici car l'erreur est ~3e-12 (précision machine)
+z_MMS = f_C_mms(ti, ri)
+z_source = f_source(ti, ri)
 
-# --- 2. Affichage des résultats consoles ---
-print("-" * 60)
-print(f"Schéma 1 - Pente Linf observée : {pente1:.3f} (Attendu : 1.0)")
-print(f"Schéma 1 - Erreur Linf finale  : {res1['Linf'][-1]:.2e}")
-
-print(f"Schéma 2 - Pente Linf observée : {pente2:.3f}")
-print(f"Schéma 2 - Erreur Linf finale  : {res2['Linf'][-1]:.2e} (Précision Machine)")
-print("-" * 60)
-
-# =============================================================================
-# GRAPHIQUE 1 : QUESTION D.a) : Profil Schéma 1 et Paramètres
-# =============================================================================
-
-# 1. Choix d'un maillage représentatif pour la figure
-N_demo = 20  # On choisit N =20 pour avoir des points clairs
-r_num, C_num, dr_demo = solve_diffusion_schema1(N_demo)
-
-# 2. Affichage des paramètres dans la console (requis par la question)
-print("="*40)
-print("RÉPONSE D.a) - PARAMÈTRES DE SIMULATION")
-print("="*40)
-print(f"Coefficient diffusion (Deff) : {Deff:.1e} m^2/s")
-print(f"Terme source (S)             : {S:.1e} mol/m^3/s")
-print(f"Concentration surface (Ce)   : {Ce:.1f} mol/m^3")
-print(f"Rayon du pilier (R)          : {R_pilier:.1f} m")
-print(f"Nombre de nœuds (N)          : {N_demo}")
-print(f"Pas spatial (dr)             : {dr_demo:.4f} m")
-print("="*40)
-
-# 3. Tracé du graphique
-plt.figure(1,figsize=(10, 6))
-
-# Courbe Analytique (Ligne continue)
-r_fine = np.linspace(0, R_pilier, 200)
-plt.plot(r_fine, solution_analytique(r_fine), 'k-', linewidth=2, label='Solution Analytique (Eq. 2)')
-
-# Points Numériques Schéma 1 (Points)
-plt.plot(r_num, C_num, 'bo', markersize=8, label=f'Solution Numérique (Schéma 1, N={N_demo})')
-
-# Mise en forme
-plt.xlabel('Rayon r [m]', fontsize=12)
-plt.ylabel(r'Concentration C [mol/m$^3$]', fontsize=12)
-plt.title(f'Question D.a) : Profil de concentration stationnaire\n(Comparaison Analytique vs Numérique Ordre 1)', fontsize=14)
-plt.legend(fontsize=12)
-plt.grid(True, linestyle='--', alpha=0.7)
-
-# Ajout d'une boîte de texte avec les paramètres directement sur le graphe
-textstr = '\n'.join((
-    r'$D_{eff}=%.1e$' % (Deff, ),
-    r'$S=%.1e$' % (S, ),
-    r'$C_e=%.1f$' % (Ce, ),
-    r'$N=%d$' % (N_demo, )))
-props = dict(boxstyle='round', facecolor='wheat', alpha=0.5)
-plt.gca().text(0.05, 0.95, textstr, transform=plt.gca().transAxes, fontsize=10,
-        verticalalignment='top', bbox=props)
-
-# Sauvegarde du graphique
-nom_f_da = f"QUESTION_Da_{timestamp}.png"
-sauvgarde_resultat(plt.figure(1), results_dir, nom_f_da)
-
-# =============================================================================
-# GRAPHIQUE 2 : Question D.b (Les 3 erreurs du Schéma 1 avec Régression)
-# =============================================================================
-plt.figure(2, figsize=(10, 6))
-
-# 1. Tracé des points expérimentaux
-plt.loglog(res1['dr'], res1['L1'], 'b-^', label='Erreur L1')
-plt.loglog(res1['dr'], res1['L2'], 'g-s', label='Erreur L2')
-plt.loglog(res1['dr'], res1['Linf'], 'r-o', label='Erreur Linf')
-
-# 2. Calcul de la régression linéaire sur la norme Linf
-# On ne prend que les 4 derniers points (maillages fins) pour être dans la "partie linéaire" (asymptotique)
-x_reg = np.array(res1['dr'][-4:])  
-y_reg = np.array(res1['Linf'][-4:])
-coefs = np.polyfit(np.log(x_reg), np.log(y_reg), 1) # Fit polynomial degré 1 sur les logs
-pente_reg = coefs[0]
-intercept = coefs[1]
-
-# 3. Génération de la droite de régression pour l'affichage
-# On l'étend sur tout le domaine pour voir l'alignement
-x_fit = np.array([res1['dr'][0], res1['dr'][-1]])
-y_fit = np.exp(intercept) * x_fit**pente_reg
-
-# 4. Tracé de la régression
-plt.loglog(x_fit, y_fit, 'k--', linewidth=1.5, label=f'Régression (Pente = {pente_reg:.3f})')
-
-plt.xlabel(r'Pas spatial $\Delta r$ [m]')
-plt.ylabel('Erreur')
-plt.title('Question D.b : Convergence des erreurs avec Régression Linéaire')
-plt.grid(True, which="both", ls="-")
-plt.legend()
-
-# Sauvegarde du graphique
-nom_f_db = f"QUESTION_Db_{timestamp}.png"
-sauvgarde_resultat(plt.figure(2), results_dir, nom_f_db)
-
-# =============================================================================
-# GRAPHIQUE 3 : QUESTION E.b) (Vérification du Schéma 2 - Les 3 normes)
-# =============================================================================
-plt.figure(3,figsize=(10, 6))
-
-# 1. Tracé des 3 normes pour le Schéma 2
-# Note : Comme l'erreur est de l'ordre de la précision machine (~1e-14),
-# les courbes seront probablement "bruiteuses" ou plates, c'est normal.
-plt.loglog(res2['dr'], res2['L1'], 'b-^', label='Erreur L1 (Schéma 2)')
-plt.loglog(res2['dr'], res2['L2'], 'g-s', label='Erreur L2 (Schéma 2)')
-plt.loglog(res2['dr'], res2['Linf'], 'r-o', label='Erreur Linf (Schéma 2)')
-
-# 2. Ajout d'une ligne de référence "Précision Machine"
-# La précision standard (float64) est environ 2e-16, mais les opérations accumulent l'erreur vers 1e-14/1e-12.
-plt.axhline(y=1e-14, color='k', linestyle='--', alpha=0.5, label='Seuil Précision Machine')
-
-plt.xlabel(r'Pas spatial $\Delta r$ [m]')
-plt.ylabel('Erreur')
-plt.title('Question E.b : Vérification du Schéma 2 (Erreurs vs Delta r)')
-plt.grid(True, which="both", ls="-")
-plt.legend()
-
-# Sauvegarde du graphique
-nom_f_eb = f"QUESTION_Eb_{timestamp}.png"
-sauvgarde_resultat(plt.figure(3), results_dir, nom_f_eb)
-
-print("Graphique E.b généré : Le schéma est 'exact' pour ce problème, d'où l'erreur machine.")
-
-# =============================================================================
-# GRAPHIQUE 4 : Question E.c (Comparaison des Profils)
-# =============================================================================
-plt.figure(4, figsize=(10, 6))
-# Courbe analytique fine
-r_fine = np.linspace(0, R_pilier, 200)
-plt.plot(r_fine, solution_analytique(r_fine), 'k-', label='Analytique')
-
-# Points numériques (N=20)
-r1, C1, _ = solve_diffusion_schema1(20)
-plt.plot(r1, C1, 'bo', label='Schéma 1 (N=20)', fillstyle='none')
-
-r2, C2, _ = solve_diffusion_schema2(20)
-plt.plot(r2, C2, 'rx', label='Schéma 2 (N=20)')
-
+plt.figure(figsize=(8, 6))
+contour1 = plt.contourf(ri, ti, z_MMS, levels=50, cmap='viridis')
+plt.colorbar(contour1, label='Concentration C_MMS')
+plt.title('Solution Manufacturée $C_{MMS}(r,t)$')
 plt.xlabel('Rayon r [m]')
-plt.ylabel(r'Concentration $C$ [mol/m$^3$]')
-plt.title('Question E.c : Comparaison des profils de concentration')
-plt.legend()
-plt.grid(True)
+plt.ylabel('Temps t [s]')
+plt.show()
 
-# Sauvegarde du graphique
-nom_f_ec = f"QUESTION_Ec_{timestamp}.png"
-sauvgarde_resultat(plt.figure(4), results_dir, nom_f_ec)
+plt.figure(figsize=(8, 6))
+contour2 = plt.contourf(ri, ti, z_source, levels=50, cmap='plasma')
+plt.colorbar(contour2, label='Terme Source S_MMS')
+plt.title('Terme Source Analytique $S_{MMS}(r,t)$')
+plt.xlabel('Rayon r [m]')
+plt.ylabel('Temps t [s]')
+plt.show()
 
-# =============================================================================
-# GRAPHIQUE 5 : Comparaison de Performance (Schéma 1 vs Schéma 2)
-# =============================================================================
-plt.figure(5, figsize=(10, 6))
-plt.loglog(res1['dr'], res1['Linf'], 'b-o', label=f'Schéma 1 (Pente={pente1:.2f})')
-plt.loglog(res2['dr'], res2['Linf'], 'r-s', label='Schéma 2 (Erreur Machine)')
 
+# =========================================================
+# QUESTION d) ANALYSE DE CONVERGENCE SPATIALE
+# =========================================================
+print("\nAnalyse de convergence spatiale (Question d)...")
+tf_conv = 0.5
+dt_minuscule = 1e-5
+N_values = [10, 20, 40, 80, 160]
+
+erreurs_Linf_espace = []
+drs_espace = []
+
+for N_test in N_values:
+    r_num, t_num, C_evolution = solve_diffusion_schema2(
+        N=N_test, tf=tf_conv, dt=dt_minuscule, 
+        is_mms=True, f_source=f_source, f_dirichlet=f_C_dirichlet, params_mms=params_mms_dict
+    )
+    C_num_final = C_evolution[-1]
+    dr = r_num[1] - r_num[0]
+    C_exact_final = f_C_mms(tf_conv, r_num)
+    
+    erreur_max = np.max(np.abs(C_num_final - C_exact_final))
+    erreurs_Linf_espace.append(erreur_max)
+    drs_espace.append(dr)
+    print(f"N = {N_test:<4} | dr = {dr:.4f} | Erreur Linf = {erreur_max:.4e}")
+
+coefs_espace = np.polyfit(np.log(drs_espace[-3:]), np.log(erreurs_Linf_espace[-3:]), 1)
+print(f"--> PENTE SPATIALE OBSERVÉE : {coefs_espace[0]:.3f} (Ordre 2 attendu)")
+
+plt.figure(figsize=(9, 6))
+plt.loglog(drs_espace, erreurs_Linf_espace, 'b-o', linewidth=2, label=f'Erreur spatiale (Pente = {coefs_espace[0]:.2f})')
+x_guide = np.array([drs_espace[0], drs_espace[-1]])
+plt.loglog(x_guide, erreurs_Linf_espace[0] * (x_guide / drs_espace[0])**2, 'k--', alpha=0.6, label='Guide Pente 2')
 plt.xlabel(r'Pas spatial $\Delta r$ [m]')
-plt.ylabel(r'Erreur $L_{\infty}$')
-plt.title('Comparaison de convergence : Schéma 1 vs Schéma 2')
-plt.grid(True, which="both", ls="-")
+plt.ylabel(r'Erreur maximale $L_\infty$')
+plt.title('Question d) Convergence spatiale (MMS)')
+plt.grid(True, which='both', linestyle='--', alpha=0.7)
 plt.legend()
+plt.show()
 
-# Sauvegarde du graphique
-nom_f_ed = f"QUESTION_Ed_{timestamp}.png"
-sauvgarde_resultat(plt.figure(5), results_dir, nom_f_ed)
 
+# =========================================================
+# QUESTION e) ANALYSE DE CONVERGENCE TEMPORELLE
+# =========================================================
+print("\nAnalyse de convergence temporelle (Question e)...")
+tf_conv = 1.0
+N_tres_fin = 300  
+dt_values = [0.2, 0.1, 0.05, 0.025, 0.0125]
+
+erreurs_Linf_temps = []
+
+for dt_test in dt_values:
+    r_num, t_num, C_evolution = solve_diffusion_schema2(
+        N=N_tres_fin, tf=tf_conv, dt=dt_test, 
+        is_mms=True, f_source=f_source, f_dirichlet=f_C_dirichlet, params_mms=params_mms_dict
+    )
+    C_num_final = C_evolution[-1]
+    C_exact_final = f_C_mms(tf_conv, r_num)
+    
+    erreur_max = np.max(np.abs(C_num_final - C_exact_final))
+    erreurs_Linf_temps.append(erreur_max)
+    print(f"dt = {dt_test:<7} | Erreur Linf = {erreur_max:.4e}")
+
+coefs_temps = np.polyfit(np.log(dt_values), np.log(erreurs_Linf_temps), 1)
+print(f"--> PENTE TEMPORELLE OBSERVÉE : {coefs_temps[0]:.3f} (Ordre 1 attendu)")
+
+plt.figure(figsize=(9, 6))
+plt.loglog(dt_values, erreurs_Linf_temps, 'r-s', linewidth=2, label=f'Erreur temporelle (Pente = {coefs_temps[0]:.2f})')
+x_guide_t = np.array([dt_values[0], dt_values[-1]])
+plt.loglog(x_guide_t, erreurs_Linf_temps[0] * (x_guide_t / dt_values[0])**1, 'k--', alpha=0.6, label='Guide Pente 1')
+plt.xlabel(r'Pas de temps $\Delta t$ [s]')
+plt.ylabel(r'Erreur maximale $L_\infty$')
+plt.title('Question e) Convergence temporelle (MMS)')
+plt.grid(True, which='both', linestyle='--', alpha=0.7)
+plt.legend()
+plt.show()
+
+
+# =========================================================
+# QUESTION f) SIMULATION DU PROBLÈME PHYSIQUE RÉEL
+# =========================================================
+print("\nSimulation sur 126 ans (Question f)...")
+tf_physique = 4e9          
+dt_physique = 1e7          
+N_physique = 50            
+
+r_vrai, temps_vrai, C_evolution_vrai = solve_diffusion_schema2(
+    N=N_physique, tf=tf_physique, dt=dt_physique, is_mms=False
+)
+
+plt.figure(figsize=(10, 6))
+annees_cibles = [0.5, 2, 5, 15, 126]
+indices_a_tracer = []
+
+for annee in annees_cibles:
+    temps_sec = annee * 365.25 * 24 * 3600
+    idx = np.argmin(np.abs(temps_vrai - temps_sec))
+    indices_a_tracer.append(idx)
+
+couleurs = ['#a8ddb5', '#4eb3d3', '#2b8cbe', '#0868ac', '#023858']
+
+for i, idx in enumerate(indices_a_tracer):
+    t_en_annees = temps_vrai[idx] / (3600 * 24 * 365.25)
+    plt.plot(r_vrai, C_evolution_vrai[idx], color=couleurs[i], linewidth=2, label=f't = {t_en_annees:.1f} ans')
+
+plt.plot(r_vrai, C_evolution_vrai[0], 'k--', linewidth=1.5, label='t = 0 ans')
+plt.xlabel('Rayon du pilier r [m]')
+plt.ylabel('Concentration de sel C [mol/m$^3$]')
+plt.title('Pénétration du sel vers l\'état d\'équilibre (126 ans)')
+plt.grid(True, linestyle='--', alpha=0.7)
+plt.legend()
+plt.xlim(0, 0.5)
+plt.ylim(0, 22)
 plt.show()

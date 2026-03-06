@@ -1,149 +1,118 @@
 """
-Ce programme contient les fonctions necessaires à la résolution du profil de concentration:
-    - Résolution analytique
-    - Résolution numérique
-    - Analyse de convergence
+Fichier : fonctions.py
+Contient les paramètres physiques, le solveur numérique 1D,
+et le générateur symbolique pour la Méthode des Solutions Manufacturées (MMS).
 """
 import numpy as np
+import sympy as sp
 
-# --- Paramètres Physiques ---
+# =========================================================
+# PARAMÈTRES PHYSIQUES GLOBAUX
+# =========================================================
 Deff = 1e-10        # Coefficient de diffusion effectif [m^2/s]
-S = 2e-8            # Terme source constant [mol/m^3/s]
+k = 4e-9            # Constante d'évolution [s^-1]
 Ce = 20.0           # Concentration à la surface [mol/m^3]
 R_pilier = 0.5      # Rayon du pilier (Diamètre = 1m)
 
-# --- Solution Analytique (Eq. 2) ---
-def solution_analytique(r):
+# =========================================================
+# SOLVEUR NUMÉRIQUE
+# =========================================================
+def solve_diffusion_schema2(N, tf, dt, is_mms=False, f_source=None, f_dirichlet=None, params_mms=None):
     """
-    Retourne la concentration en un point r à partir de la solution analytique
-        - r: rayon auquel calculer la concentration
+    Solveur 1D Transitoire Implicite.
+    Peut résoudre le problème physique réel ou le problème MMS.
     """
-    #C(r) = (S / 4Deff) * R^2 * ((r^2/R^2) - 1) + Ce
-    terme1 = (S * 0.25 / ( Deff)) * (R_pilier**2)
-    terme2 = ((r**2) / (R_pilier**2)) - 1
-    return terme1 * terme2 + Ce
+    D_val = params_mms['Deff'] if is_mms else Deff
+    k_val = params_mms['k'] if is_mms else k
+    R_val = params_mms['R_pilier'] if is_mms else R_pilier
+    Ce_val = params_mms['Ce'] if is_mms else Ce
 
-def solve_diffusion_schema1(N):
-    """
-    Résout l'équation 1D stationnaire avec:
-    - Dérivée seconde : Centrée
-    - Dérivée première : Décentrée avant (Forward)
-    """
-    # 1. Maillage
-    r = np.linspace(0, R_pilier, N)
-    dr = r[1] - r[0]  # Pas spatial delta_r
-
-    # 2. Initialisation des matrices (Ax = b)
-    A = np.zeros((N, N))
-    b = np.zeros(N)
-
-    # 3. Remplissage des nœuds internes (i = 1 à N-2)
-    # Equation: C_{i-1} + (-2 - dr/r_i)*C_i + (1 + dr/r_i)*C_{i+1} = S*dr^2/Deff
-    for i in range(1, N - 1):
-        ri = r[i]
-        
-        # Remplissage de la matrice A
-        A[i, i-1] = 1.0
-        A[i, i] = -2.0 - (dr / ri) 
-        A[i, i+1] = 1.0 + (dr / ri)
-        
-        # Remplissage du membre de droite b
-        b[i] = (S * dr**2) / Deff
-
-    # 4. Conditions Frontières (CF)
-    
-    # CF au Centre (i=0) : Neumann (dC/dr = 0)
-    # Schéma avant: (C_1 - C_0) / dr = 0  => -C_0 + C_1 = 0
-    A[0, 0] = -1.0
-    A[0, 1] = 1.0
-    b[0] = 0.0
-
-    #CF à la Surface (i=N-1) : Dirichlet (C = Ce)
-    A[N-1, N-1] = 1.0
-    b[N-1] = Ce
-
-    # 5. Résolution du système linéaire
-    C_num = np.linalg.solve(A, b)
-    
-    return r, C_num, dr
-
-def solve_diffusion_schema2(N):
-    """
-    Résout l'équation 1D stationnaire avec:
-    - Dérivée seconde : Centrée (Ordre 2)
-    - Dérivée première : Centrée (Ordre 2) -> Changement ici !
-    """
-    r = np.linspace(0, R_pilier, N)
+    r = np.linspace(0, R_val, N)
     dr = r[1] - r[0]
     A = np.zeros((N, N))
-    b = np.zeros(N)
-
-    # --- Nœuds internes (i = 1 à N-2) ---
-    # Equation avec schéma centré pour dC/dr:
-    # Coeffs issus de : (C_i+1 - 2C_i + C_i-1)/dr^2 + (1/r_i)*(C_i+1 - C_i-1)/(2dr)
+    
+    # 1. ASSEMBLAGE DE LA MATRICE A
     for i in range(1, N - 1):
         ri = r[i]
-        # Nouveaux coefficients (Schéma 2)
-        coeff_im1 = 1.0 - (dr * 0.5 / ri)
-        coeff_i   = -2.0
-        coeff_ip1 = 1.0 + (dr * 0.5 / ri)
-        A[i, i-1] = coeff_im1
-        A[i, i]   = coeff_i
-        A[i, i+1] = coeff_ip1
-        b[i]      = (S * dr**2) / Deff
+        alpha = D_val * dt
+        A[i, i-1] = alpha * (1/(2*ri*dr) - 1/dr**2)
+        A[i, i]   = 1.0 + 2*alpha/dr**2 + k_val*dt
+        A[i, i+1] = alpha * (-1/(2*ri*dr) - 1/dr**2)
 
-    # --- Conditions Frontières ---
-    
-    # CF au Centre (i=0) : Neumann (dC/dr = 0)
-    # ATTENTION : Pour maintenir l'ordre 2, on utilise un schéma décentré à 3 points
-    # Formule : -3*C0 + 4*C1 - 1*C2 = 0
+    # CF Centre (Neumann - Gear)
     A[0, 0] = -3.0
     A[0, 1] = 4.0
     A[0, 2] = -1.0
-    b[0]    = 0.0
 
-    # CF à la Surface (i=N-1) : Dirichlet (C = Ce)
+    # CF Surface (Dirichlet)
     A[N-1, N-1] = 1.0
-    b[N-1] = Ce
 
-    # Résolution
-    C_num = np.linalg.solve(A, b)
-    return r, C_num, dr
+    # 2. INITIALISATION
+    C_num = np.zeros(N)
+    
+    if is_mms:
+        C_num = Ce_val * np.exp(0) * (r/R_val)**3 
 
-# =============================================================================
-# ANALYSE DE CONVERGENCE ET GÉNÉRATION DES GRAPHIQUES
-# =============================================================================
+    temps = [0.0]
+    C_evolution = [C_num.copy()]
 
-def analyser_convergence(fonction_solveur, n_values):
-    """Calcule L1, L2 et Linf pour une liste de maillages.
-    """
-    results = {'dr': [], 'L1': [], 'L2': [], 'Linf': []}
-    # Boucle sur les différentes tailles de maillage
-    for n in n_values:
-        r, C_num, dr = fonction_solveur(n)
-        C_exact = solution_analytique(r)
-        diff = np.abs(C_num - C_exact)  #Calcul erreur de discrétisation
+    num_steps = int(round(tf / dt))
+    t = 0.0
+
+    # 3. BOUCLE TEMPORELLE
+    for n in range(num_steps):
+        t += dt  
+        b = C_num.copy() 
+
+        if is_mms and f_source is not None:
+            S_eval = f_source(t, r[1:-1]) 
+            b[1:-1] += S_eval * dt
+
+        b[0] = 0.0
+        if is_mms and f_dirichlet is not None:
+            b[-1] = f_dirichlet(t)
+        else:
+            b[-1] = Ce_val         
+
+        C_num = np.linalg.solve(A, b)
         
-        # Calcul des 3 normes demandées à la question D.b
-        results['dr'].append(dr)
-        results['L1'].append(np.sum(diff) / n)             # Norme L1
-        results['L2'].append(np.sqrt(np.sum(diff**2) / n)) # Norme L2
-        results['Linf'].append(np.max(diff))               # Norme Linf
-    return results
+        temps.append(t)
+        C_evolution.append(C_num.copy())
 
-def calculer_pente(results, metric='Linf'):
-    """Calcule la pente entre les 2 maillages les plus fins (Diapo 19).
-    """
-    err = results[metric]
-    dr = results['dr']
-    return np.log(err[-2] / err[-1]) / np.log(dr[-2] / dr[-1])
+    return r, np.array(temps), np.array(C_evolution)
 
-# =============================================================================
-# FONCTIONS DE SAUVEGARDE DES RÉSULTATS
-# =============================================================================
-def sauvgarde_resultat(fig, results_dir, nom_fichier):
-    """Sauvgarde une figure dans le dossier "results" avec un nom spécifique.
+# =========================================================
+# GÉNÉRATEUR MMS (SYMPY)
+# =========================================================
+def generer_fonctions_mms():
     """
-    chemin_final = results_dir / nom_fichier
-    fig.savefig(chemin_final, dpi=300)
-    return ()
+    Génère et retourne les fonctions Python (lambdify) de la solution 
+    manufacturée et de son terme source, ainsi que le dictionnaire de paramètres.
+    """
+    t, r = sp.symbols("t r")
+    Ce_sym, R_sym, Deff_sym, k_sym = sp.symbols("Ce R_pilier Deff k")
+
+    # Solution Manufacturée
+    C_mms = sp.exp(-t) * Ce_sym * (r/R_sym)**3
+
+    # Dérivées
+    C_t = sp.diff(C_mms, t)
+    C_r = sp.diff(C_mms, r)
+    C_rr = sp.diff(C_mms, r, r)
+
+    # Calcul du terme source analytique
+    source = C_t - Deff_sym*(C_rr + C_r/r) + k_sym*C_mms
+
+    # Paramètres unitaires pour la vérification numérique
+    params_mms_sym = {Ce_sym: 1.0, R_sym: 1.0, Deff_sym: 1.0, k_sym: 1.0}
+    params_mms_dict = {'Deff': 1.0, 'k': 1.0, 'R_pilier': 1.0, 'Ce': 1.0}
+
+    # Conversion en fonctions utilisables par Numpy
+    f_C_mms = sp.lambdify([t, r], C_mms.subs(params_mms_sym), "numpy")
+    f_source = sp.lambdify([t, r], source.subs(params_mms_sym), "numpy")
+
+    # Fonction pour la condition de Dirichlet
+    C_dirichlet_expr = C_mms.subs(r, R_sym)
+    f_C_dirichlet = sp.lambdify([t], C_dirichlet_expr.subs(params_mms_sym), "numpy")
+    
+    return f_C_mms, f_source, f_C_dirichlet, params_mms_dict
