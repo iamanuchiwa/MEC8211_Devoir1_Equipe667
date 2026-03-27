@@ -10,13 +10,12 @@ except:
 
 class parametres():
     C0 = 1     #[mol]
-    u_max=0.1  #[m/s]
-    L=1      #[m]
-    H=5      #[m]
+    u_max = 1  #[m/s]
+    L = 10      #[m]
+    H = 10      #[m]
     P = 1      #[m]
-    Pe = 1
-    Da = 1
-
+    Pe = 200
+    Da = 100
 prm = parametres()
 
 analyses = "3"
@@ -27,42 +26,55 @@ if "1" in analyses:
 
 #Tracé de la mms et du terme source
 if "2" in analyses:
-    trace_profil(200, 200, prm, 2)
+    trace_profil(100, 100, prm, 2)
     
 if "3" in analyses:
-    nx_list = [40, 80, 160, 320, 640]
-    erreurs = []
+    nx_list = [60, 120, 240, 480, 960]
+    erreurs_inf = []
+    erreurs_l2 = []
     h_list = []
     
     for nx in nx_list:
         ny = nx
+        h = prm.L / (nx - 1)
+        h_list.append(h)
+        
+        # Résolution numérique 
         C_num = concentration(nx, ny, prm, 1, 2, True)
-        f_c, f_s, f_diri, f_neum, f_rob = genere_mms()
+        
+        # Solution exacte
+        fonct_mms = genere_mms(prm)
         x = np.linspace(0, prm.L, nx)
         y = np.linspace(0, prm.H, ny)
-        err_max = 0.0
+        X, Y = np.meshgrid(x, y)
+        C_exact = fonct_mms[0](X, Y).flatten()
 
-        for j in range(ny):
-            for i in range(nx):
-                n = j * nx + i
-                C_exact = f_c(x[i], y[j])
-                err = abs(C_num[n] - C_exact)
-
-                if err > err_max:
-                    err_max = err
-
-        erreurs.append(err_max)
-        h_list.append(prm.L / (nx - 1))
-        coefs = np.polyfit(np.log(h_list[-3:]), np.log(erreurs[-3:]), 1)
+        diff = np.abs(C_num - C_exact)
+        erreurs_inf.append(np.max(diff))
+        err_l2 = np.sqrt(np.mean(diff**2))
+        erreurs_l2.append(err_l2)
+        
+    # Calcul des pentes
+    pente_inf = np.polyfit(np.log(h_list[-3:]), np.log(erreurs_inf[-3:]), 1)[0]
+    pente_l2 = np.polyfit(np.log(h_list[-3:]), np.log(erreurs_l2[-3:]), 1)[0]
     
-    print(f"--> PENTE SPATIALE OBSERVÉE : {coefs[0]:.3f} (Ordre 2 attendu)")
+    print(f"--> PENTE L_inf : {pente_inf:.3f}")
+    print(f"--> PENTE L_2   : {pente_l2:.3f}")
+
+    # --- Graphique ---
     plt.figure(figsize=(9, 6))
-    plt.loglog(h_list, erreurs, 'b-o', linewidth=2, label=f'Erreur spatiale (Pente = {coefs[0]:.2f})')
+    plt.loglog(h_list, erreurs_inf, 'b-o', linewidth=2, label=f'Erreur $L_\infty$ (Pente = {pente_inf:.2f})')
+    plt.loglog(h_list, erreurs_l2, 'r-s', linewidth=2, label=f'Erreur $L_2$ (Pente = {pente_l2:.2f})')
+    
+    # Guide visuel (Pente 2)
     x_guide = np.array([h_list[0], h_list[-1]])
-    plt.loglog(x_guide, erreurs[0] * (x_guide / h_list[0])**2, 'k--', alpha=0.6, label='Guide Pente 2')
-    plt.xlabel('Pas spatial dx = dy [m]')
-    plt.ylabel(r'Erreur maximale $L_\infty$')
-    plt.title('Convergence spatiale (MMS)')
-    plt.grid(True, which='both', linestyle='--', alpha=0.7)
+    y_guide = erreurs_inf[0] * (x_guide / h_list[0])**2
+    plt.loglog(x_guide, y_guide, 'k--', alpha=0.6, label='Référence Pente 2')
+    
+    plt.xlabel('Pas spatial $\Delta x$ [m]')
+    plt.ylabel('Erreur')
+    plt.title('Analyse de convergence spatiale (Normes $L_\infty$ et $L_2$)')
+    plt.grid(True, which='both', linestyle='--', alpha=0.5)
     plt.legend()
+    plt.tight_layout()
     plt.show()

@@ -48,14 +48,11 @@ def concentration(nx, ny, prm, nb_plaque = 1, ordre = 2, mms = False):
     Pe = prm.Pe
     Da = prm.Da
     Ds = u_max*H/Pe
-
-    if mms:
-        f_c, f_source, f_diric, f_neum, f_robin = genere_mms()
-        Ds = 1.0
-        u_max = 1.0
-    
     k = Da*Ds/L
-
+    
+    if mms:
+        f_mms = genere_mms(prm)
+    
     #Calcul du nombre de noeuds N, des pas dx et dy et des vecteurs de position et vitesses
     N = nx * ny
     dx = L/(nx - 1)
@@ -71,7 +68,7 @@ def concentration(nx, ny, prm, nb_plaque = 1, ordre = 2, mms = False):
     for i in range(nx, N - nx - ny + 1, nx):
         A[i, i] = 1
         if mms:
-            b[i] = f_diric(0, (i//nx)*dy)
+            b[i] = f_mms[2](0, (i//nx)*dy)
         else:
             b[i] = C0
 
@@ -81,6 +78,8 @@ def concentration(nx, ny, prm, nb_plaque = 1, ordre = 2, mms = False):
         A[i, i - 1] = -4/(2*dx)
         A[i, i - 2] = 1/(2*dx)
 
+        if mms:
+            b[i] = f_mms[3]((nx - 1)*dx, (i//nx)*dy)
     #Paroi du haut
     if nb_plaque == 1:
         #Condition de Neumann si la paroi est non adsorbante
@@ -88,6 +87,9 @@ def concentration(nx, ny, prm, nb_plaque = 1, ordre = 2, mms = False):
             A[i, i] = 3/(2*dy)
             A[i, i - nx] = -4/(2*dy)
             A[i, i - 2*nx] = 1/(2*dy)
+            
+            if mms:
+                b[i] = f_mms[4]((i % nx)*dx, (ny - 1)*dy)
     else:
         #Condition de Robin si la paroi est adsorbante
         for i in range(N-nx, N):
@@ -101,42 +103,47 @@ def concentration(nx, ny, prm, nb_plaque = 1, ordre = 2, mms = False):
         A[i, i + nx] = 2*Ds/dy
         A[i, i + 2*nx] = -Ds/(2*dy)
 
-    #Points intérieurs gauches (advection-diffusion)
-    for i in range(nx + 1, N - nx - ny + 2, nx):
-        j = i//nx
-        u = u_vect[j]
-
-        A[i, i + 1] = - Ds/(dx**2)
-        A[i, i + nx] = -Ds/(dy**2)
-        A[i, i - nx] = -Ds/(dy**2)
-
-        if ordre == 2:
-            #Usage de points fantômes C[i-2]=C[i-1]=C0 (colonne de points C = C0 ajoutée à gauche)
-            A[i, i] = 3*u/(2*dx) + 2*Ds/(dx**2) + 2*Ds/(dy**2)
-            A[i, i - 1] = -3*u/(2*dx) - Ds/(dx**2)
-        else:
-            #Dérivée arrière d'ordre 1 (pas de points fantômes)
-            A[i, i] = u/(dx) + 2*Ds/(dx**2) + 2*Ds/(dy**2)
-            A[i, i - 1] = -u/(dx) - Ds/(dx**2)
-
         if mms:
-            b[i] += f_source((i % nx)*dx, j*dy)
+            b[i] = f_mms[5](i*dx, 0)
 
     #Points intérieurs (advection-diffusion)
-    for i in range(2, nx-1):
-        for j in range(1, ny-1):
+    for j in range(1, ny-1):
+        for i in range(1, nx-1): # On commence à i=1 (juste après Dirichlet)
             n = j * nx + i
             u = u_vect[j]
 
-            A[n, n] = 3*u/(2*dx) + 2*Ds/(dx**2) + 2*Ds/(dy**2)
-            A[n, n + 1] = -Ds/(dx**2)
-            A[n, n - 1] = -2*u/dx - Ds/(dx**2)
-            A[n, n - 2] = u/(2*dx)
-            A[n, n + nx] = -Ds/(dy**2)
-            A[n, n - nx] = -Ds/(dy**2)
+            # Diffusion
+            diag_diff = 2*Ds/(dx**2) + 2*Ds/(dy**2)
+            off_x = -Ds/(dx**2)
+            off_y = -Ds/(dy**2)
+
+            if ordre == 1:
+                # Advection Upwind Ordre 1
+                A[n, n] = u/dx + diag_diff
+                A[n, n - 1] = -u/dx + off_x
+                A[n, n + 1] = off_x
+                A[n, n + nx] = off_y
+                A[n, n - nx] = off_y
+        
+            else:
+                # Advection Ordre 2
+                if i == 1:
+                    # Cas spécial pour le premier point (Schéma centré)
+                    A[n, n] = diag_diff
+                    A[n, n + 1] = u/(2*dx) + off_x
+                    A[n, n - 1] = -u/(2*dx) + off_x
+                else:
+                    # Schéma décentré arrière ordre 2 (3 points)
+                    A[n, n] = 3*u/(2*dx) + diag_diff
+                    A[n, n - 1] = -2*u/dx + off_x
+                    A[n, n - 2] = u/(2*dx)
+                    A[n, n + 1] = off_x 
+            
+                A[n, n + nx] = off_y
+                A[n, n - nx] = off_y
 
             if mms:
-                b[n] += f_source(i*dx, j*dy)
+                b[n] += f_mms[1](i*dx, j*dy)
 
     #Résolution du système matriciel
     A_csr = A.tocsr()
@@ -206,39 +213,51 @@ def Q_c_simpson(nx, ny, prm, nb_plaque = 1, ordre = 2):
 
     return Qc
 
-def genere_mms():
+def genere_mms(prm):
     """
-    Génère et retourne les fonctions Python (lambdify) de la solution 
-    manufacturée et de son terme source, ainsi que le dictionnaire de paramètres.
+    Génère la MMS en utilisant les paramètres réels (u_max, Ds, k) 
+    calculés à partir de Pe et Da.
     """
     x, y = sp.symbols("x y")
-    C0, L, H, u_max, Ds = sp.symbols("C0 L H u_max Ds")
+    C0_sym, L_sym, H_sym, u_max_sym, Ds_sym, k_sym = sp.symbols("C0 L H u_max Ds k")
 
-    # Solution MMS
-    C = C0*(1 + sp.sin(sp.pi*x/L)*sp.cos(sp.pi*y/H))
+    C = C0_sym * (1 + sp.sin(sp.pi * x / L_sym) * sp.cos(sp.pi * y / H_sym))
+    u = -4 * u_max_sym * y * (y - H_sym) / (H_sym**2)
 
-    # Vitesse
-    u = -4*u_max*y*(y - H)/H**2
-
-    # Dérivées
     Cx = sp.diff(C, x)
-    Cxx = sp.diff(C, x, 2)
-    Cyy = sp.diff(C, y, 2)
+    Cxx = sp.diff(C, x, x)
+    Cy = sp.diff(C, y)
+    Cyy = sp.diff(C, y, y)
 
-    # Terme source 
-    s = u*Cx - Ds*(Cxx + Cyy)
+    #Terme source 
+    s = u * Cx - Ds_sym * (Cxx + Cyy)
 
-    params = {C0:1, L:1, H:1, u_max:1, Ds:1}
+    #Préparation des valeurs numériques
+    ds_val = (prm.u_max * prm.H) / prm.Pe
+    k_val = (prm.Da * ds_val) / prm.L
+    
+    params = {
+        C0_sym: prm.C0, 
+        L_sym: prm.L, 
+        H_sym: prm.H, 
+        u_max_sym: prm.u_max, 
+        Ds_sym: ds_val,
+        k_sym: k_val
+    }
 
-    f_C = sp.lambdify((x,y), C.subs(params), "numpy")
-    f_source = sp.lambdify((x,y), s.subs(params), "numpy")
+    #fonctions lambdify
+    f_C = sp.lambdify((x, y), C.subs(params), "numpy")
+    f_source = sp.lambdify((x, y), s.subs(params), "numpy")
 
-    # Conditions frontières: Dirichlet, Neumann et Robin
-    f_dirichlet = sp.lambdify((x,y), C.subs(x,0).subs(params), "numpy")
-    f_neumann = sp.lambdify((x,y), Cx.subs(x,1).subs(params), "numpy")
-    f_Cy = sp.lambdify((x,y), sp.diff(C,y).subs(params), "numpy")
+    #Conditions frontières
+    f_dirichlet = sp.lambdify((x, y), C.subs(x, 0).subs(params), "numpy")
+    f_neum_x = sp.lambdify((x, y), Cx.subs(x, prm.L).subs(params), "numpy")
+    f_neum_y = sp.lambdify((x, y), Cy.subs(y, prm.H).subs(params), "numpy")
+    robin_expr = -k_sym * C + Ds_sym * Cy
+    f_robin = sp.lambdify((x, y), robin_expr.subs(y, 0).subs(params), "numpy")
 
-    return f_C, f_source, f_dirichlet, f_neumann, f_Cy
+    return [f_C, f_source, f_dirichlet, f_neum_x, f_neum_y, f_robin]
+
 
 def trace_profil(nx, ny, prm, mode = 1):
     """
@@ -264,10 +283,10 @@ def trace_profil(nx, ny, prm, mode = 1):
         plt.show()
 
     elif mode == 2:
-        f_c, f_s, f_d, f_n, f_cy = genere_mms()
-        xi, yi = np.meshgrid(x, y, indexing='ij')
-        C = f_c(xi, yi)
-        S = f_s(xi, yi)
+        fonc_mms = genere_mms(prm)
+        xi, yi = np.meshgrid(x, y)
+        C = fonc_mms[0](xi, yi)
+        S = fonc_mms[1](xi, yi)
         X, Y = np.meshgrid(x, y)
 
         plt.figure(figsize=(7,5))
