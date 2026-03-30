@@ -10,12 +10,9 @@ import matplotlib.pyplot as plt
 # Importation des fonctions depuis notre module externe
 from fonctions import Generate_sample, LBM
 
-# --- AJOUT ---
-# 1. On récupère le chemin absolu du dossier contenant le script (src)
-# 2. On remonte d'un niveau pour cibler le dossier parent (Devoir 3)
 dossier_devoir3 = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
-# 3. On force Python à travailler depuis ce dossier
+#On force Python à travailler depuis ce dossier
 os.chdir(dossier_devoir3)
 # -------------
 
