@@ -1,8 +1,8 @@
-# Importation des modules
+"""
+Ce code effectue des tracés et analyses pour la vérification de code et de solution
+"""
 import numpy as np
 import matplotlib.pyplot as plt
-import matplotlib.patches as patches
-
 try:
     from levesque_fonctions import *
 except:
@@ -14,11 +14,20 @@ class parametres():
     L = 10      #[m]
     H = 10      #[m]
     P = 1      #[m]
-    Pe = 200
-    Da = 100
+    Pe = 0.5
+    Da = 50
 prm = parametres()
 
-analyses = "3"
+analyses = "4"
+
+"""
+1 - Profil de température
+2 - MMS et terme source
+3 - Analyse de convergence avec MMS
+4 - Calcul du GCI
+
+Exemple: analyses = "14" --> donnera le tracé du profil de température et calculera le GCI
+"""
 
 #Génération du profil de température
 if "1" in analyses:
@@ -29,7 +38,7 @@ if "2" in analyses:
     trace_profil(100, 100, prm, 2)
     
 if "3" in analyses:
-    nx_list = [60, 120, 240, 480, 960]
+    nx_list = [60, 120, 240, 480]
     erreurs_inf = []
     erreurs_l2 = []
     h_list = []
@@ -40,7 +49,7 @@ if "3" in analyses:
         h_list.append(h)
         
         # Résolution numérique 
-        C_num = concentration(nx, ny, prm, 1, 2, True)
+        C_num = concentration(nx, ny, prm, 2, True)
         
         # Solution exacte
         fonct_mms = genere_mms(prm)
@@ -78,3 +87,29 @@ if "3" in analyses:
     plt.legend()
     plt.tight_layout()
     plt.show()
+
+# GCI
+if "4" in analyses:
+    nx = [657, 219, 73]
+    r = 3
+    p_f = 2
+    Q = []
+
+    for n in nx:
+        Q_i = Q_c_simpson(n, n, prm, 2)
+        Q.append(Q_i)
+
+    ordre_obs = np.log(abs((Q[2] - Q[1])/(Q[1] - Q[0])))/np.log(r)
+    print(Q)
+    print("Ordre observé: ", ordre_obs)
+
+    if abs((ordre_obs - p_f)/p_f) > 0.1:
+        p = min(max(0.5, ordre_obs), p_f)
+        f_s = 3
+    else:
+        p = p_f
+        f_s = 1.25
+
+    print("Fs: ", f_s)
+    gci = f_s*abs(Q[1] - Q[0])/(r**p - 1)
+    print("GCI: ", gci)

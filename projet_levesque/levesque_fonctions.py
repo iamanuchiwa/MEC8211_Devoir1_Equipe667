@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 
-def concentration(nx, ny, prm, nb_plaque = 1, ordre = 2, mms = False):
+def concentration(nx, ny, prm, ordre = 2, mms = False):
     '''
     Entrées:
         + nx : Nombre de points en x
@@ -24,14 +24,9 @@ def concentration(nx, ny, prm, nb_plaque = 1, ordre = 2, mms = False):
             - P: profondeur du domaine [m]
             - Pe: nombre de Péclet (adimensionnel)
             - Da: nombre de Damkohler (adimensionnel)
-        + nb_plaque: nombre de parois adsorbantes
-            - 1: paroi inférieure seulement (valeur par défaut)
-            - 2: parois inférieure et supérieure 
         + ordre
-            - 1: ordre 1 utilisé pour l'évaluation des points à gauche du centre 
-                    --> recommandé pour nx et ny < 40
-            - 2: ordre 2 utilisé partout (méthode des points fantômes) (valeur par défaut)
-                    --> recommandé pour nx et ny > 40
+            - 1: ordre 1 utilisé pour l'évaluation des points du centre 
+            - 2: ordre 2 utilisé partout
         + mms: True pour utiliser le terme source
     Sortie:
         - Vecteur dimension N contenant les concentrations à chaque noeud
@@ -42,23 +37,19 @@ def concentration(nx, ny, prm, nb_plaque = 1, ordre = 2, mms = False):
 
     #Extraction des paramètres, calcul de k et Ds à partir des nombres adimensionnels (Pe et Da)
     H = prm.H
-    L = prm.L
     C0 = prm.C0
-    u_max = prm.u_max
-    Pe = prm.Pe
-    Da = prm.Da
-    Ds = u_max*H/Pe
-    k = Da*Ds/L
+    Ds = prm.u_max*H/prm.Pe
+    k = prm.Da*Ds/prm.L
     
     if mms:
         f_mms = genere_mms(prm)
     
     #Calcul du nombre de noeuds N, des pas dx et dy et des vecteurs de position et vitesses
     N = nx * ny
-    dx = L/(nx - 1)
+    dx = prm.L/(nx - 1)
     dy = H/(ny - 1)
     y_vect = np.linspace(0, H, ny)
-    u_vect = -4*u_max*y_vect*(y_vect - H)/(H**2)
+    u_vect = -4*prm.u_max*y_vect*(y_vect - H)/(H**2)
 
     #Création des matrices du système: matrice creuse A et matrice b
     A = sparse.lil_matrix((N, N))
@@ -81,21 +72,15 @@ def concentration(nx, ny, prm, nb_plaque = 1, ordre = 2, mms = False):
         if mms:
             b[i] = f_mms[3]((nx - 1)*dx, (i//nx)*dy)
     #Paroi du haut
-    if nb_plaque == 1:
-        #Condition de Neumann si la paroi est non adsorbante
-        for i in range(N-nx, N):
-            A[i, i] = 3/(2*dy)
-            A[i, i - nx] = -4/(2*dy)
-            A[i, i - 2*nx] = 1/(2*dy)
+    
+        #Condition de Neumann 
+    for i in range(N-nx, N):
+        A[i, i] = 3/(2*dy)
+        A[i, i - nx] = -4/(2*dy)
+        A[i, i - 2*nx] = 1/(2*dy)
             
-            if mms:
-                b[i] = f_mms[4]((i % nx)*dx, (ny - 1)*dy)
-    else:
-        #Condition de Robin si la paroi est adsorbante
-        for i in range(N-nx, N):
-            A[i, i] = k + 3*Ds/(2*dy)
-            A[i, i - nx] = -2*Ds/dy
-            A[i, i - 2*nx] = Ds/(2*dy)
+        if mms:
+            b[i] = f_mms[4]((i % nx)*dx, (ny - 1)*dy)
 
     #Paroi du bas: conditon de Robin
     for i in range(0, nx):
@@ -108,7 +93,7 @@ def concentration(nx, ny, prm, nb_plaque = 1, ordre = 2, mms = False):
 
     #Points intérieurs (advection-diffusion)
     for j in range(1, ny-1):
-        for i in range(1, nx-1): # On commence à i=1 (juste après Dirichlet)
+        for i in range(1, nx-1):
             n = j * nx + i
             u = u_vect[j]
 
@@ -151,7 +136,7 @@ def concentration(nx, ny, prm, nb_plaque = 1, ordre = 2, mms = False):
 
     return C
 
-def Q_c_simpson(nx, ny, prm, nb_plaque = 1, ordre = 2):
+def Q_c_simpson(nx, ny, prm, ordre = 2, mms = False):
     '''
     Entrées:
         + nx : Nombre de points en x
@@ -164,54 +149,35 @@ def Q_c_simpson(nx, ny, prm, nb_plaque = 1, ordre = 2):
             - P: profondeur du domaine [m]
             - Pe: nombre de Péclet (adimensionnel)
             - Da: nombre de Damkohler (adimensionnel)
-        + nb_plaque: nombre de parois adsorbantes
-            - 1: paroi inférieure seulement (valeur par défaut)
-            - 2: parois inférieure et supérieure 
         + ordre
             - 1: ordre 1 utilisé pour l'évaluation des points à gauche du centre
-                --> recommandé pour nx et ny < 40
-            - 2: ordre 2 utilisé partout (méthode des points fantômes) (valeur par défaut)
-                --> recommandé pour nx et ny > 40
+            - 2: ordre 2 utilisé partout 
     Sortie:
         - Qc: quantité totale de matière adsorbée par unité de surface (mol/m^2)
     '''
     #Impose un nombre de points impair pour l'intégration Simpson
     assert nx%2 != 0, "Le nombre de points nx doit être impair"
 
-    #Extraction des paramètres, calcul de k et Ds à partir des nombres adimensionnels (Pe et Da)
-    H = prm.H
-    L = prm.L
-    C0 = prm.C0
-    u_max = prm.u_max
-    Pe = prm.Pe
-    Da = prm.Da
-    Ds = u_max*H/Pe
-    k = Da*Ds/L
+    #Calcul de k et Ds à partir des nombres adimensionnels (Pe et Da)
+    Ds = prm.u_max*prm.H/prm.Pe
+    k = prm.Da*Ds/prm.L
 
     #Calcul de l'espacement des point h et le nombre de sous-intervalles N
-    h = L/(nx - 1)
+    h = prm.L/(nx - 1)
     N = int((nx - 1)/2)
 
     #Génération des concentrations et extractions des concentrations à la paroi inférieure
-    C = concentration(nx, ny, prm, nb_plaque, ordre)
+    C = concentration(nx, ny, prm, ordre, mms)
     C_bas = C[0 : nx]
     Qc = 0
 
     #Calcul de l'intégrale
     for i in range(0, N):
-        Qc += h/3*H*k/(C0*Ds)*(C_bas[2*i] + 4*C_bas[2*i + 1] + C_bas[2*i + 2])
+        Qc += C_bas[2*i] + 4*C_bas[2*i + 1] + C_bas[2*i + 2]
 
-    if nb_plaque == 2:
-        #Extraction des concentrations de la paroi supérieure et calcul de l'intégrale
-        C_haut = C[ny*nx - nx : ny*nx]
-        Qc_haut = 0
+    
+    return Qc*h*prm.H*k/(3*Ds)
 
-        for i in range(0, N):
-            Qc_haut += h/3*H*k/(C0*Ds)*(C_haut[2*i] + 4*C_haut[2*i + 1] + C_haut[2*i + 2])
-
-        Qc += Qc_haut
-
-    return Qc
 
 def genere_mms(prm):
     """
