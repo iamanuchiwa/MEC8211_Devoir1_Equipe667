@@ -1,30 +1,34 @@
 """
 Ce code effectue des tracés et analyses pour la vérification de code et de solution
 """
+import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from scipy.stats import norm, uniform
 try:
     from levesque_fonctions import *
 except:
     pass
 
-class parametres():
-    C0 = 1     #[mol]
-    u_max = 1  #[m/s]
-    L = 10      #[m]
-    H = 10      #[m]
-    P = 1      #[m]
-    Pe = 0.5
-    Da = 50
-prm = parametres()
+# J'ai mis ca dans levesque_fonctions pour éviter les imports circulaires:) 
+# class parametres():
+#     C0 = 1     #[mol]
+#     u_max = 1  #[m/s]
+#     L = 10      #[m]
+#     H = 10      #[m]
+#     P = 1      #[m]
+#     Pe = 0.5
+#     Da = 50
+# prm = parametres()
 
-analyses = "4"
+analyses = "5"
 
 """
 1 - Profil de température
 2 - MMS et terme source
 3 - Analyse de convergence avec MMS
 4 - Calcul du GCI
+5 - Monte-Carlo et analyse de sensibilité globale
 
 Exemple: analyses = "14" --> donnera le tracé du profil de température et calculera le GCI
 """
@@ -113,3 +117,12 @@ if "4" in analyses:
     print("Fs: ", f_s)
     gci = f_s*abs(Q[1] - Q[0])/(r**p - 1)
     print("GCI: ", gci)
+
+
+# Resultats Monte-Carlo et analyse de sensibilité globale
+if "5" in analyses:
+    results = monte_carlo_Qc(prm, N=500, nx=129, ny=129)
+    df = pd.DataFrame(results)
+    corr = df.corr()["Q"].sort_values()
+    print("\n----- GLOBAL SENSITIVITY (Pearson R) -----") #Need to verify this w. method etc.
+    print(corr)
