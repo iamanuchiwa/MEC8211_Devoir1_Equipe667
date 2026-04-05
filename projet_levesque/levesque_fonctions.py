@@ -415,3 +415,25 @@ def plot_input_pdfs(C0_samples, C0_mu, C0_sigma, umax_samples, umax_mu, umax_sig
 
     plt.tight_layout()
     plt.show()
+
+
+#Propagation des incertitudes (Tilde)
+"""Write your code down there"""
+
+#Validation
+def Q_c_empirique(prm):
+    '''
+    Calcule la quantité totale de matière adsorbée Qc (mol/m^2) 
+    à partir de la relation empirique fournie dans l'énoncé.
+    Valide uniquement pour Pe > 100.
+    '''
+    # Calcul de Ds à partir de Pe
+    Ds = prm.u_max * prm.H / prm.Pe
+    
+    # Intégrale de la solution empirique: 
+    # Qc_emp = C0 * 0.854 * (u_max * H^2 / Ds)**(1/3) * (3/2) * L**(2/3)
+    terme1 = 0.854 * (prm.u_max * (prm.H**2) / Ds)**(1/3)
+    terme2 = 1.5 * (prm.L**(2/3))
+    
+    Qc_emp = prm.C0 * terme1 * terme2
+    return Qc_emp
