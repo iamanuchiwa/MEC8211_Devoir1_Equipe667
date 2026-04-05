@@ -10,6 +10,18 @@ import sympy as sp
 import matplotlib.pyplot as plt
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
+from scipy.stats import norm, uniform
+
+#from projet_levesque.levesque_analyse import parametres
+class parametres():
+    C0 = 1     #[mol]
+    u_max = 1  #[m/s]
+    L = 10      #[m]
+    H = 10      #[m]
+    P = 1      #[m]
+    Pe = 0.5
+    Da = 50
+prm = parametres()
 
 def concentration(nx, ny, prm, ordre = 2, mms = False):
     '''
@@ -270,3 +282,136 @@ def trace_profil(nx, ny, prm, mode = 1):
         plt.ylabel('y [m]')
         plt.title(f'Terme source analytique\nnx = {nx} et ny = {ny}')
         plt.show()
+
+def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True):
+    """
+    Monte-Carlo propagation of uncertainties for the Levesque problem.
+    
+    Parameters
+    ----------
+    prm_base : parametres
+        Baseline parameter object (used as mean values) - use prm from prev. code.
+    N : int
+        Number of Monte-Carlo samples.
+    nx, ny : int
+        Resolution of each PDE solve.
+    seed : int
+        Random seed for repeatability.
+
+    Returns
+    -------
+    results : dict
+        Contains arrays of samples and Q values.
+    """
+
+    np.random.seed(seed)
+
+    # Storage for results
+    Q_vals = []
+    C0_vals = []
+    umax_vals = []
+    L_vals = []
+    H_vals = []
+    Pe_vals = []
+    Da_vals = []
+
+    for _ in range(N):
+
+        # Create a perturbed parameter object
+        prm_m = parametres()
+
+        #  ALEATORY uncertainties (Gaussian)
+        prm_m.C0     = np.random.normal(prm_base.C0,   0.03 * prm_base.C0)      # ±3%
+        prm_m.u_max  = np.random.normal(prm_base.u_max,0.05 * prm_base.u_max)   # ±5%
+        prm_m.L      = np.random.normal(prm_base.L,    0.01 * prm_base.L)       # ±1%
+        prm_m.H      = np.random.normal(prm_base.H,    0.01 * prm_base.H)       # ±1%
+
+        #  EPISTEMIC uncertainties (interval uniform)
+        prm_m.Pe = np.random.uniform(0.9*prm_base.Pe, 1.1*prm_base.Pe)  # ±10% interval
+        prm_m.Da = np.random.uniform(0.9*prm_base.Da, 1.1*prm_base.Da)  # ±10% interval
+
+        #  Evaluate model output: total adsorbed quantity Qc
+        Q_val = Q_c_simpson(nx, ny, prm_m, ordre=2, mms=False)
+        Q_vals.append(Q_val)
+
+        # Save inputs for sensitivity analysis
+        C0_vals.append(prm_m.C0)
+        umax_vals.append(prm_m.u_max)
+        L_vals.append(prm_m.L)
+        H_vals.append(prm_m.H)
+        Pe_vals.append(prm_m.Pe)
+        Da_vals.append(prm_m.Da)
+
+    Q_vals = np.array(Q_vals)
+    # Plot PDFs of inputs
+    if plot_pdfs:
+        plot_input_pdfs(
+            C0_vals, prm_base.C0, 0.03*prm_base.C0,
+            umax_vals, prm_base.u_max, 0.05*prm_base.u_max,
+            L_vals, prm_base.L, 0.01*prm_base.L,
+            H_vals, prm_base.H, 0.01*prm_base.H,
+            Pe_vals, 0.9*prm_base.Pe, 1.1*prm_base.Pe,
+            Da_vals, 0.9*prm_base.Da, 1.1*prm_base.Da
+        )
+
+    # Print statistics (standard MEC8211)
+    print("\n----- MONTE-CARLO RESULTS -----")
+    print(f"Mean Qc      : {Q_vals.mean():.6e}")
+    print(f"Std dev Qc   : {Q_vals.std():.6e}")
+    print(f"Rel. uncert. : {100*Q_vals.std()/Q_vals.mean():.2f} %")
+    print(f"95% CI       : [{np.percentile(Q_vals,2.5):.6e} ; {np.percentile(Q_vals,97.5):.6e}]")
+
+    # Plot CDF (as required in the PDF slides)
+    sorted_Q = np.sort(Q_vals)
+    cdf = np.linspace(0, 1, N)
+
+    plt.figure(figsize=(8,5))
+    plt.plot(sorted_Q, cdf, lw=2)
+    plt.xlabel("Qc (mol/m²)")
+    plt.ylabel("CDF")
+    plt.grid(True, alpha=0.3)
+    plt.title("CDF of Qc from Monte-Carlo Propagation")
+    plt.tight_layout()
+    plt.show()
+
+    return {
+        "Q": Q_vals,
+        "C0": np.array(C0_vals),
+        "u_max": np.array(umax_vals),
+        "L": np.array(L_vals),
+        "H": np.array(H_vals),
+        "Pe": np.array(Pe_vals),
+        "Da": np.array(Da_vals)
+    }
+
+def plot_input_pdfs(C0_samples, C0_mu, C0_sigma, umax_samples, umax_mu, umax_sigma,
+    L_samples, L_mu, L_sigma, H_samples, H_mu, H_sigma, Pe_samples, Pe_min, Pe_max, Da_samples, Da_min, Da_max):
+    #Plot pdfs des entrées (gaussian pour les paramètres aléatoires et uniforme pour les paramètres épistémiques)
+    #Utilisé dans Monte-Carlo pour visualiser les distributions d'entrée
+
+    fig, axs = plt.subplots(3, 2, figsize=(12, 12))
+    axs = axs.flatten()
+
+    def plot_gaussian(ax, samples, mu, sigma, label):
+        x = np.linspace(mu - 4*sigma, mu + 4*sigma, 200)
+        ax.hist(samples, bins=20, density=True, alpha=0.5)
+        ax.plot(x, norm.pdf(x, mu, sigma), 'r', lw=2)
+        ax.set_title(label)
+        ax.grid(alpha=0.3)
+
+    def plot_uniform(ax, samples, a, b, label):
+        x = np.linspace(a, b, 200)
+        ax.hist(samples, bins=20, density=True, alpha=0.5)
+        ax.plot(x, uniform.pdf(x, a, b - a), 'r', lw=2)
+        ax.set_title(label)
+        ax.grid(alpha=0.3)
+
+    plot_gaussian(axs[0], C0_samples,    C0_mu,  C0_sigma,  "C0 (Gaussian)")
+    plot_gaussian(axs[1], umax_samples,  umax_mu,umax_sigma,"u_max (Gaussian)")
+    plot_gaussian(axs[2], L_samples,     L_mu,  L_sigma,   "L (Gaussian)")
+    plot_gaussian(axs[3], H_samples,     H_mu,  H_sigma,   "H (Gaussian)")
+    plot_uniform(axs[4], Pe_samples, Pe_min, Pe_max, "Pe (Uniform)")
+    plot_uniform(axs[5], Da_samples, Da_min, Da_max, "Da (Uniform)")
+
+    plt.tight_layout()
+    plt.show()
