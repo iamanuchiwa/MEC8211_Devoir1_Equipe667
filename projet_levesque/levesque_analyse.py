@@ -76,7 +76,7 @@ if "3" in analyses:
 
     # --- Graphique ---
     plt.figure(figsize=(9, 6))
-    plt.loglog(h_list, erreurs_inf, 'b-o', linewidth=2, label=f'Erreur $L_\infty$ (Pente = {pente_inf:.2f})')
+    plt.loglog(h_list, erreurs_inf, 'b-o', linewidth=2, label=f'Erreur $L_infty$ (Pente = {pente_inf:.2f})')
     plt.loglog(h_list, erreurs_l2, 'r-s', linewidth=2, label=f'Erreur $L_2$ (Pente = {pente_l2:.2f})')
     
     # Guide visuel (Pente 2)
@@ -84,9 +84,9 @@ if "3" in analyses:
     y_guide = erreurs_inf[0] * (x_guide / h_list[0])**2
     plt.loglog(x_guide, y_guide, 'k--', alpha=0.6, label='Référence Pente 2')
     
-    plt.xlabel('Pas spatial $\Delta x$ [m]')
+    plt.xlabel('Pas spatial $Delta x$ [m]')
     plt.ylabel('Erreur')
-    plt.title('Analyse de convergence spatiale (Normes $L_\infty$ et $L_2$)')
+    plt.title('Analyse de convergence spatiale (Normes $L_infty$ et $L_2$)')
     plt.grid(True, which='both', linestyle='--', alpha=0.5)
     plt.legend()
     plt.tight_layout()
