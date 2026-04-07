@@ -120,7 +120,7 @@ if "4" in analyses:
     print("GCI: ", gci)
 
 
-#Propagation des incertitudes (Tilde)
+#Propagation des incertitudes
 # Resultats Monte-Carlo et analyse de sensibilité globale
 if "5" in analyses:
     results = monte_carlo_Qc(prm, N=500, nx=129, ny=129)
@@ -224,172 +224,172 @@ if "6" in analyses:
     print("="*50)
 
 
-# ==========================================
-# GRAPHIQUE 1 : Intervalle ASME V&V 20
-# ==========================================
-# On réutilise les valeurs exactes obtenues lors de ton exécution
-E = 19.4088
-u_val = 8.21595
-k = 2 # Facteur d'élargissement pour 95.4% de confiance
-U_val_95 = k * u_val
+    # ==========================================
+    # GRAPHIQUE 1 : Intervalle ASME V&V 20
+    # ==========================================
+    # On réutilise les valeurs exactes obtenues lors de ton exécution
+    E = 19.4088
+    u_val = 8.21595
+    k = 2 # Facteur d'élargissement pour 95.4% de confiance
+    U_val_95 = k * u_val
 
-plt.figure(figsize=(6, 8))
+    plt.figure(figsize=(6, 8))
 
-# Ligne zéro (référence où la simulation correspondrait exactement à l'expérience)
-plt.axhline(0, color='black', linewidth=1.5, linestyle='-')
+    # Ligne zéro (référence où la simulation correspondrait exactement à l'expérience)
+    plt.axhline(0, color='black', linewidth=1.5, linestyle='-')
 
-# Point d'erreur E avec la barre d'incertitude globale U_val
-plt.errorbar(1, E, yerr=U_val_95, fmt='ko', capsize=10, capthick=2, markersize=8, label=r'Erreur de comparaison $E$')
+    # Point d'erreur E avec la barre d'incertitude globale U_val
+    plt.errorbar(1, E, yerr=U_val_95, fmt='ko', capsize=10, capthick=2, markersize=8, label=r'Erreur de comparaison $E$')
 
-# Annotations pour bien lier au cours MEC8211
-plt.text(1.05, E, r'$E \approx \delta_{model}$', fontsize=12, verticalalignment='center')
-plt.text(1.05, E + U_val_95, r'$(\hat{\delta}_{model})_{max}$', fontsize=12, verticalalignment='bottom')
-plt.text(1.05, E - U_val_95, r'$(\hat{\delta}_{model})_{min}$', fontsize=12, verticalalignment='top')
+    # Annotations pour bien lier au cours MEC8211
+    plt.text(1.05, E, r'$E \approx \delta_{model}$', fontsize=12, verticalalignment='center')
+    plt.text(1.05, E + U_val_95, r'$(\hat{\delta}_{model})_{max}$', fontsize=12, verticalalignment='bottom')
+    plt.text(1.05, E - U_val_95, r'$(\hat{\delta}_{model})_{min}$', fontsize=12, verticalalignment='top')
 
-# Remplissage pour mettre en évidence la zone d'erreur du modèle
-plt.axhspan(E - U_val_95, E + U_val_95, alpha=0.15, color='red', label=r"Intervalle de confiance de $\delta_{model}$")
+    # Remplissage pour mettre en évidence la zone d'erreur du modèle
+    plt.axhspan(E - U_val_95, E + U_val_95, alpha=0.15, color='red', label=r"Intervalle de confiance de $\delta_{model}$")
 
-# Mise en forme du graphique
-plt.xlim(0.5, 2.0)
-plt.xticks([]) # On cache l'axe X car c'est un point de validation unique
-plt.ylabel('Erreur de comparaison $E = S - D$ $[mol/m^2]$', fontsize=12)
-plt.title('Validation ASME V&V 20 : Estimation de l\'erreur du modèle\n(Correspond au "Case 3a")', fontsize=13)
-plt.grid(axis='y', linestyle='--', alpha=0.7)
-plt.legend(loc='lower right')
+    # Mise en forme du graphique
+    plt.xlim(0.5, 2.0)
+    plt.xticks([]) # On cache l'axe X car c'est un point de validation unique
+    plt.ylabel('Erreur de comparaison $E = S - D$ $[mol/m^2]$', fontsize=12)
+    plt.title('Validation ASME V&V 20 : Estimation de l\'erreur du modèle\n(Correspond au "Case 3a")', fontsize=13)
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+    plt.legend(loc='lower right')
 
-plt.tight_layout()
-plt.show()
+    plt.tight_layout()
+    plt.show()
 
 
-# ==========================================
-# GRAPHIQUE 2 : Profil de flux local le long de la paroi
-# ==========================================
-print("\n--- Génération du Graphique 2 : Profil de flux local ---")
+    # ==========================================
+    # GRAPHIQUE 2 : Profil de flux local le long de la paroi
+    # ==========================================
+    print("\n--- Génération du Graphique 2 : Profil de flux local ---")
 
-# 1. Configuration des paramètres (validité Pe >= 100)
-prm_plot = parametres()
-prm_plot.Pe = 100
-prm_plot.Da = 10000
-prm_plot.L = 100
-prm_plot.H = 10
-prm_plot.u_max = 0.1
-prm_plot.C0 = 1.0
+    # 1. Configuration des paramètres (validité Pe >= 100)
+    prm_plot = parametres()
+    prm_plot.Pe = 100
+    prm_plot.Da = 10000
+    prm_plot.L = 100
+    prm_plot.H = 10
+    prm_plot.u_max = 0.1
+    prm_plot.C0 = 1.0
 
-# Maillage suffisamment fin pour une belle courbe
-nx_plot = 241
-ny_plot = 241
+    # Maillage suffisamment fin pour une belle courbe
+    nx_plot = 241
+    ny_plot = 241
 
-# Calcul des constantes physiques
-Ds = prm_plot.u_max * prm_plot.H / prm_plot.Pe
-k = prm_plot.Da * Ds / prm_plot.L
+    # Calcul des constantes physiques
+    Ds = prm_plot.u_max * prm_plot.H / prm_plot.Pe
+    k = prm_plot.Da * Ds / prm_plot.L
 
-# 2. Obtention de la solution numérique
-print("Résolution du champ de concentration en cours...")
-C_num = concentration(nx_plot, ny_plot, prm_plot, ordre=2, mms=False)
+    # 2. Obtention de la solution numérique
+    print("Résolution du champ de concentration en cours...")
+    C_num = concentration(nx_plot, ny_plot, prm_plot, ordre=2, mms=False)
 
-# Extraction de la concentration sur la paroi inférieure (les nx premiers noeuds)
-C_bas = C_num[0:nx_plot]
-x_vect = np.linspace(0, prm_plot.L, nx_plot)
+    # Extraction de la concentration sur la paroi inférieure (les nx premiers noeuds)
+    C_bas = C_num[0:nx_plot]
+    x_vect = np.linspace(0, prm_plot.L, nx_plot)
 
-# Flux numérique via la condition de Robin imposée
-q_num = (prm_plot.H / prm_plot.C0) * (k / Ds) * C_bas
+    # Flux numérique via la condition de Robin imposée
+    q_num = (prm_plot.H / prm_plot.C0) * (k / Ds) * C_bas
 
-# 3. Calcul de la solution empirique analytique
-q_emp = np.zeros(nx_plot)
-q_emp[0] = np.nan # On assigne NaN à x=0 pour éviter l'erreur de division par zéro
+    # 3. Calcul de la solution empirique analytique
+    q_emp = np.zeros(nx_plot)
+    q_emp[0] = np.nan # On assigne NaN à x=0 pour éviter l'erreur de division par zéro
 
-for i in range(1, nx_plot):
-    q_emp[i] = 0.854 * ( (prm_plot.u_max * (prm_plot.H**2)) / (x_vect[i] * Ds) )**(1/3)
+    for i in range(1, nx_plot):
+        q_emp[i] = 0.854 * ( (prm_plot.u_max * (prm_plot.H**2)) / (x_vect[i] * Ds) )**(1/3)
 
-# 4. Tracé du graphique
-plt.figure(figsize=(8, 5))
+    # 4. Tracé du graphique
+    plt.figure(figsize=(8, 5))
 
-# Tracé des courbes à partir du 2e noeud (index 1) pour esquiver la singularité
-plt.plot(x_vect[1:], q_emp[1:], 'k-', linewidth=2, label='Solution empirique')
-plt.plot(x_vect[1:], q_num[1:], 'r--', linewidth=2, label='Solution numérique')
+    # Tracé des courbes à partir du 2e noeud (index 1) pour esquiver la singularité
+    plt.plot(x_vect[1:], q_emp[1:], 'k-', linewidth=2, label='Solution empirique')
+    plt.plot(x_vect[1:], q_num[1:], 'r--', linewidth=2, label='Solution numérique')
 
-plt.xlabel('Position le long de la plaque x [m]', fontsize=12)
-plt.ylabel('Flux adimensionnel', fontsize=12)
-plt.title(f'Validation du profil de flux surfacique (Pe = {prm_plot.Pe})', fontsize=13)
+    plt.xlabel('Position le long de la plaque x [m]', fontsize=12)
+    plt.ylabel('Flux adimensionnel', fontsize=12)
+    plt.title(f'Validation du profil de flux surfacique (Pe = {prm_plot.Pe})', fontsize=13)
 
-# Ajustement de l'axe Y pour ne pas aplatir le graphique à cause de la divergence proche de x=0
-plt.ylim(0, max(q_num[1:]) * 1.5)
-plt.xlim(0, prm_plot.L)
+    # Ajustement de l'axe Y pour ne pas aplatir le graphique à cause de la divergence proche de x=0
+    plt.ylim(0, max(q_num[1:]) * 1.5)
+    plt.xlim(0, prm_plot.L)
 
-plt.grid(True, which='both', linestyle=':', alpha=0.7)
-plt.legend(fontsize=11)
-plt.tight_layout()
+    plt.grid(True, which='both', linestyle=':', alpha=0.7)
+    plt.legend(fontsize=11)
+    plt.tight_layout()
 
-plt.show()
+    plt.show()
 
-# ==========================================
-# GRAPHIQUE 3 : Qc en fonction de Pe
-# ==========================================
-print("\n--- Génération du Graphique 3 : Qc en fonction de Pe ---")
+    # ==========================================
+    # GRAPHIQUE 3 : Qc en fonction de Pe
+    # ==========================================
+    print("\n--- Génération du Graphique 3 : Qc en fonction de Pe ---")
 
-prm_sweep = parametres()
-prm_sweep.Da = 10000
-prm_sweep.L = 100
-prm_sweep.H = 10
-prm_sweep.u_max = 0.1
-prm_sweep.C0 = 1.0
+    prm_sweep = parametres()
+    prm_sweep.Da = 10000
+    prm_sweep.L = 100
+    prm_sweep.H = 10
+    prm_sweep.u_max = 0.1
+    prm_sweep.C0 = 1.0
 
-pe_list = [100, 325, 550, 775, 1000]
-Qc_num_list = []
-u_num_list = []
+    pe_list = [100, 325, 550, 775, 1000]
+    Qc_num_list = []
+    u_num_list = []
 
-nx_v = [163, 55, 19]
-r = 3
-p_f = 2
+    nx_v = [163, 55, 19]
+    r = 3
+    p_f = 2
 
-for pe in pe_list:
-    print(f"Calcul des simulations pour Pe = {pe}...")
-    prm_sweep.Pe = pe
-    
-    Q_gci = [Q_c_simpson(n, n, prm_sweep, 2) for n in nx_v]
-    
-    ordre_obs = np.log(abs((Q_gci[2] - Q_gci[1])/(Q_gci[1] - Q_gci[0])))/np.log(r)
-    if abs((ordre_obs - p_f)/p_f) > 0.1:
-        p = min(max(0.5, ordre_obs), p_f)
-        f_s = 3
-    else:
-        p = p_f
-        f_s = 1.25
+    for pe in pe_list:
+        print(f"Calcul des simulations pour Pe = {pe}...")
+        prm_sweep.Pe = pe
         
-    gci = f_s * abs(Q_gci[1] - Q_gci[0]) / (r**p - 1)
-    
-    Qc_num_list.append(Q_gci[0])
-    u_num_list.append(gci / 2) 
+        Q_gci = [Q_c_simpson(n, n, prm_sweep, 2) for n in nx_v]
+        
+        ordre_obs = np.log(abs((Q_gci[2] - Q_gci[1])/(Q_gci[1] - Q_gci[0])))/np.log(r)
+        if abs((ordre_obs - p_f)/p_f) > 0.1:
+            p = min(max(0.5, ordre_obs), p_f)
+            f_s = 3
+        else:
+            p = p_f
+            f_s = 1.25
+            
+        gci = f_s * abs(Q_gci[1] - Q_gci[0]) / (r**p - 1)
+        
+        Qc_num_list.append(Q_gci[0])
+        u_num_list.append(gci / 2) 
 
-pe_dense = np.linspace(100, 1000, 100)
-Qc_emp_dense = []
+    pe_dense = np.linspace(100, 1000, 100)
+    Qc_emp_dense = []
 
-for pe in pe_dense:
-    prm_sweep.Pe = pe
-    Qc_emp_dense.append(Q_c_empirique(prm_sweep))
+    for pe in pe_dense:
+        prm_sweep.Pe = pe
+        Qc_emp_dense.append(Q_c_empirique(prm_sweep))
 
-# --- CORRECTION ICI : Création préalable de la liste pour le fill_between ---
-Qc_emp_list = []
-for pe in pe_list:
-    prm_sweep.Pe = pe
-    Qc_emp_list.append(Q_c_empirique(prm_sweep))
-# --------------------------------------------------------------------------
+    # --- CORRECTION ICI : Création préalable de la liste pour le fill_between ---
+    Qc_emp_list = []
+    for pe in pe_list:
+        prm_sweep.Pe = pe
+        Qc_emp_list.append(Q_c_empirique(prm_sweep))
+    # --------------------------------------------------------------------------
 
-plt.figure(figsize=(9, 6))
+    plt.figure(figsize=(9, 6))
 
-plt.plot(pe_dense, Qc_emp_dense, 'k-', linewidth=2, label='Modèle empirique (Vérité terrain)')
+    plt.plot(pe_dense, Qc_emp_dense, 'k-', linewidth=2, label='Modèle empirique (Vérité terrain)')
 
-plt.errorbar(pe_list, Qc_num_list, yerr=u_num_list, fmt='rs', capsize=5, capthick=1.5, markersize=7, label='Simulation numérique avec $u_{num}$')
+    plt.errorbar(pe_list, Qc_num_list, yerr=u_num_list, fmt='rs', capsize=5, capthick=1.5, markersize=7, label='Simulation numérique avec $u_{num}$')
 
-plt.xlabel('Nombre de Péclet (Pe)', fontsize=12)
-plt.ylabel('Quantité totale adsorbée $Q_c$ $[mol/m^2]$', fontsize=12)
-plt.title('Validation du modèle : Réponse du système selon le régime d\'écoulement', fontsize=13)
+    plt.xlabel('Nombre de Péclet (Pe)', fontsize=12)
+    plt.ylabel('Quantité totale adsorbée $Q_c$ $[mol/m^2]$', fontsize=12)
+    plt.title('Validation du modèle : Réponse du système selon le régime d\'écoulement', fontsize=13)
 
-# On utilise la nouvelle liste directement
-plt.fill_between(pe_list, Qc_num_list, Qc_emp_list, color='red', alpha=0.1, label='Erreur de comparaison $E$')
+    # On utilise la nouvelle liste directement
+    plt.fill_between(pe_list, Qc_num_list, Qc_emp_list, color='red', alpha=0.1, label='Erreur de comparaison $E$')
 
-plt.grid(True, linestyle='--', alpha=0.6)
-plt.legend(fontsize=11)
-plt.tight_layout()
+    plt.grid(True, linestyle='--', alpha=0.6)
+    plt.legend(fontsize=11)
+    plt.tight_layout()
 
-plt.show()
+    plt.show()
