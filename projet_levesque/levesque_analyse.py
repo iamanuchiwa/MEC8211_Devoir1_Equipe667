@@ -119,6 +119,7 @@ if "4" in analyses:
     print("GCI: ", gci)
 
 
+#Propagation des incertitudes (Tilde)
 # Resultats Monte-Carlo et analyse de sensibilité globale
 if "5" in analyses:
     results = monte_carlo_Qc(prm, N=500, nx=129, ny=129)
@@ -127,14 +128,12 @@ if "5" in analyses:
     print("\n----- GLOBAL SENSITIVITY (Pearson R) -----") #Need to verify this w. method etc.
     print(corr)
 
-#Propagation des incertitudes (Tilde)
-"""Write your code down there"""
 
 
 #Validation
 
 # Validation selon le standard ASME V&V 20
-if "5" in analyses:
+if "6" in analyses:
     print("\n" + "="*50)
     print(" VALIDATION DE MODÈLE (ASME V&V 20)")
     print("="*50)

@@ -283,30 +283,28 @@ def trace_profil(nx, ny, prm, mode = 1):
         plt.title(f'Terme source analytique\nnx = {nx} et ny = {ny}')
         plt.show()
 
+#Propagation des incertitudes
 def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True):
     """
-    Monte-Carlo propagation of uncertainties for the Levesque problem.
-    
-    Parameters
-    ----------
+    Monte-Carlo propagation pour évaluer l'incertitude sur la quantité totale de matière adsorbée Qc
+    Paramètres d'entrée:
     prm_base : parametres
-        Baseline parameter object (used as mean values) - use prm from prev. code.
+        Paramètre de base pour la simulation, contenant les valeurs moyennes des paramètres d'entrée. Utilise prm dans analyse
     N : int
-        Number of Monte-Carlo samples.
+        Nr de simulations Monte-Carlo à effectuer.
     nx, ny : int
-        Resolution of each PDE solve.
+        resolution spatiale pour chaque pde
     seed : int
-        Random seed for repeatability.
+        Random seed
 
-    Returns
-    -------
+    retourns:
     results : dict
-        Contains arrays of samples and Q values.
+        archive des résultats de la simulation Monte-Carlo, contenant les valeurs de Qc et les échantillons des paramètres d'entrée pour l'analyse de sensibilité.
     """
 
     np.random.seed(seed)
 
-    # Storage for results
+    # Stockage des résultats
     Q_vals = []
     C0_vals = []
     umax_vals = []
@@ -317,24 +315,24 @@ def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True):
 
     for _ in range(N):
 
-        # Create a perturbed parameter object
+        # parametres pour cette simulation Monte-Carlo
         prm_m = parametres()
 
-        #  ALEATORY uncertainties (Gaussian)
+        #  incertitudes aléatoires (gaussian)
         prm_m.C0     = np.random.normal(prm_base.C0,   0.03 * prm_base.C0)      # ±3%
         prm_m.u_max  = np.random.normal(prm_base.u_max,0.05 * prm_base.u_max)   # ±5%
         prm_m.L      = np.random.normal(prm_base.L,    0.01 * prm_base.L)       # ±1%
         prm_m.H      = np.random.normal(prm_base.H,    0.01 * prm_base.H)       # ±1%
 
-        #  EPISTEMIC uncertainties (interval uniform)
+        #  incertitudes épistémiques (uniforme)
         prm_m.Pe = np.random.uniform(0.9*prm_base.Pe, 1.1*prm_base.Pe)  # ±10% interval
         prm_m.Da = np.random.uniform(0.9*prm_base.Da, 1.1*prm_base.Da)  # ±10% interval
 
-        #  Evaluate model output: total adsorbed quantity Qc
+        #  Calcul de Qc pour cette simulation Monte-Carlo
         Q_val = Q_c_simpson(nx, ny, prm_m, ordre=2, mms=False)
         Q_vals.append(Q_val)
 
-        # Save inputs for sensitivity analysis
+        # Sauvegarde des échantillons de paramètres pour l'analyse de sensibilité
         C0_vals.append(prm_m.C0)
         umax_vals.append(prm_m.u_max)
         L_vals.append(prm_m.L)
@@ -343,7 +341,7 @@ def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True):
         Da_vals.append(prm_m.Da)
 
     Q_vals = np.array(Q_vals)
-    # Plot PDFs of inputs
+    # Plot PDFs d'entrée
     if plot_pdfs:
         plot_input_pdfs(
             C0_vals, prm_base.C0, 0.03*prm_base.C0,
@@ -354,14 +352,14 @@ def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True):
             Da_vals, 0.9*prm_base.Da, 1.1*prm_base.Da
         )
 
-    # Print statistics (standard MEC8211)
+    # présentation des résultats de la simulation Monte-Carlo
     print("\n----- MONTE-CARLO RESULTS -----")
     print(f"Mean Qc      : {Q_vals.mean():.6e}")
     print(f"Std dev Qc   : {Q_vals.std():.6e}")
     print(f"Rel. uncert. : {100*Q_vals.std()/Q_vals.mean():.2f} %")
     print(f"95% CI       : [{np.percentile(Q_vals,2.5):.6e} ; {np.percentile(Q_vals,97.5):.6e}]")
 
-    # Plot CDF (as required in the PDF slides)
+    # Plot CDF de Qc
     sorted_Q = np.sort(Q_vals)
     cdf = np.linspace(0, 1, N)
 
@@ -416,9 +414,6 @@ def plot_input_pdfs(C0_samples, C0_mu, C0_sigma, umax_samples, umax_mu, umax_sig
     plt.tight_layout()
     plt.show()
 
-
-#Propagation des incertitudes (Tilde)
-"""Write your code down there"""
 
 #Validation
 def Q_c_empirique(prm):
