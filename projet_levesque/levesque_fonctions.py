@@ -284,7 +284,7 @@ def trace_profil(nx, ny, prm, mode = 1):
         plt.show()
 
 #Propagation des incertitudes
-def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True):
+def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True, plot_cdf=True):
     """
     Monte-Carlo propagation pour évaluer l'incertitude sur la quantité totale de matière adsorbée Qc
     Paramètres d'entrée:
@@ -296,6 +296,10 @@ def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True):
         resolution spatiale pour chaque pde
     seed : int
         Random seed
+    plot_pdfs : bool
+        Si True, affiche les PDF des paramètres d'entrée utilisés dans la simulation Monte-Carlo
+    plot_cdf : bool
+        Si True, affiche la CDF des paramètres d'entrée utilisés dans la simulation Monte-Carlo
 
     retourns:
     results : dict
@@ -351,6 +355,9 @@ def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True):
             Pe_vals, 0.9*prm_base.Pe, 1.1*prm_base.Pe,
             Da_vals, 0.9*prm_base.Da, 1.1*prm_base.Da
         )
+    # Plot CDFs d'entrée
+    if plot_cdf:
+        plot_input_cdfs(C0_vals, umax_vals, L_vals, H_vals, Pe_vals, Da_vals)
 
     # présentation des résultats de la simulation Monte-Carlo
     print("\n----- MONTE-CARLO RESULTS -----")
@@ -410,6 +417,30 @@ def plot_input_pdfs(C0_samples, C0_mu, C0_sigma, umax_samples, umax_mu, umax_sig
     plot_gaussian(axs[3], H_samples,     H_mu,  H_sigma,   "H (Gaussian)")
     plot_uniform(axs[4], Pe_samples, Pe_min, Pe_max, "Pe (Uniform)")
     plot_uniform(axs[5], Da_samples, Da_min, Da_max, "Da (Uniform)")
+
+    plt.tight_layout()
+    plt.show()
+
+def plot_input_cdfs(C0_vals, umax_vals, L_vals, H_vals, Pe_vals, Da_vals):
+    fig, axs = plt.subplots(3, 2, figsize=(12, 12))
+    axs = axs.flatten()
+
+    def _plot(ax, samples, label):
+        samples = np.array(samples)
+        sorted_s = np.sort(samples)
+        cdf = np.linspace(0, 1, len(samples))
+        ax.plot(sorted_s, cdf, lw=2)
+        ax.set_title(label)
+        ax.set_xlabel(label)
+        ax.set_ylabel("CDF")
+        ax.grid(alpha=0.3)
+
+    _plot(axs[0], C0_vals, "C0")
+    _plot(axs[1], umax_vals, "u_max")
+    _plot(axs[2], L_vals, "L")
+    _plot(axs[3], H_vals, "H")
+    _plot(axs[4], Pe_vals, "Pe")
+    _plot(axs[5], Da_vals, "Da")
 
     plt.tight_layout()
     plt.show()
