@@ -123,11 +123,13 @@ if "4" in analyses:
 #Propagation des incertitudes
 # Resultats Monte-Carlo et analyse de sensibilité globale
 if "5" in analyses:
-    results = monte_carlo_Qc(prm, N=500, nx=129, ny=129)
-    df = pd.DataFrame(results)
-    corr = df.corr()["Q"].sort_values()
-    print("\n----- GLOBAL SENSITIVITY (Pearson R) -----") #Need to verify this w. method etc.
-    print(corr)
+    # results = monte_carlo_Qc(prm, N=500, nx=129, ny=129)
+    # df = pd.DataFrame(results)
+    # corr = df.corr()["Q"].sort_values()
+    # print("\n----- GLOBAL SENSITIVITY (Pearson R) -----") #Need to verify this w. method etc.
+    # print(corr)
+    print("\n=== MODE 5: P-BOX computation ===")
+    pbox = pbox(prm, N=200, nx=129, ny=129, seed=42)
 
 #Validation
 

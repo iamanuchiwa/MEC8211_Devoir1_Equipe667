@@ -284,7 +284,7 @@ def trace_profil(nx, ny, prm, mode = 1):
         plt.show()
 
 #Propagation des incertitudes
-def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True, plot_cdf=True):
+# def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True, plot_cdf=True):
     """
     Monte-Carlo propagation pour évaluer l'incertitude sur la quantité totale de matière adsorbée Qc
     Paramètres d'entrée:
@@ -389,8 +389,7 @@ def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True, plo
         "Da": np.array(Da_vals)
     }
 
-def plot_input_pdfs(C0_samples, C0_mu, C0_sigma, umax_samples, umax_mu, umax_sigma,
-    L_samples, L_mu, L_sigma, H_samples, H_mu, H_sigma, Pe_samples, Pe_min, Pe_max, Da_samples, Da_min, Da_max):
+# def plot_input_pdfs(C0_samples, C0_mu, C0_sigma, umax_samples, umax_mu, umax_sigma, L_samples, L_mu, L_sigma, H_samples, H_mu, H_sigma, Pe_samples, Pe_min, Pe_max, Da_samples, Da_min, Da_max):
     #Plot pdfs des entrées (gaussian pour les paramètres aléatoires et uniforme pour les paramètres épistémiques)
     #Utilisé dans Monte-Carlo pour visualiser les distributions d'entrée
 
@@ -421,7 +420,7 @@ def plot_input_pdfs(C0_samples, C0_mu, C0_sigma, umax_samples, umax_mu, umax_sig
     plt.tight_layout()
     plt.show()
 
-def plot_input_cdfs(C0_vals, umax_vals, L_vals, H_vals, Pe_vals, Da_vals):
+# def plot_input_cdfs(C0_vals, umax_vals, L_vals, H_vals, Pe_vals, Da_vals):
     fig, axs = plt.subplots(3, 2, figsize=(12, 12))
     axs = axs.flatten()
 
@@ -445,6 +444,103 @@ def plot_input_cdfs(C0_vals, umax_vals, L_vals, H_vals, Pe_vals, Da_vals):
     plt.tight_layout()
     plt.show()
 
+def int_aleatory_MC_ep_fix(prm_fixed, N, nx, ny, seed):
+    """
+    Monte-Carlo aléatoire pour des paramètres épistémiques fixés (Pe, Da).
+    Retourne les valeurs de Q triées et la grille de CDF correspondante.
+    """
+    np.random.seed(seed)
+    Q_vals = []
+
+    for _ in range(N):
+
+        prm_m = parametres()
+
+        # epistemic - paramètres fixés
+        prm_m.Pe = prm_fixed.Pe
+        prm_m.Da = prm_fixed.Da
+
+        # aléatoire: Gaussian
+        prm_m.C0     = np.random.normal(prm_fixed.C0,   0.03 * prm_fixed.C0)
+        prm_m.u_max  = np.random.normal(prm_fixed.u_max,0.05 * prm_fixed.u_max)
+        prm_m.L      = np.random.normal(prm_fixed.L,    0.01 * prm_fixed.L)
+        prm_m.H      = np.random.normal(prm_fixed.H,    0.01 * prm_fixed.H)
+
+        # évaluer Qc
+        Q_vals.append(Q_c_simpson(nx, ny, prm_m, ordre=2, mms=False))
+
+    Q_vals = np.sort(np.array(Q_vals))
+    CDF = np.linspace(0, 1, len(Q_vals))
+
+    return Q_vals, CDF
+
+def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
+    """
+    Calculations de l'enveloppe des CDFs de Qc pour les différentes combinaisons extrêmes de Pe et Da, en utilisant Monte-Carlo pour les paramètres aléatoires.
+    Epistemic: Pe, Da (intervals)
+    Aleatoire: C0, u_max, L, H (Gaussian)
+    """
+
+    # epistemic bounds - pm 10%
+    Pe_min, Pe_max = 0.9*prm_base.Pe, 1.1*prm_base.Pe
+    Da_min, Da_max = 0.9*prm_base.Da, 1.1*prm_base.Da
+
+    epistemic_cases = [
+        ("Pe_min, Da_min", Pe_min, Da_min),
+        ("Pe_min, Da_max", Pe_min, Da_max),
+        ("Pe_max, Da_min", Pe_max, Da_min),
+        ("Pe_max, Da_max", Pe_max, Da_max),
+    ]
+
+    all_Q = []
+    all_F = []
+
+    for label, Pe_val, Da_val in epistemic_cases:
+        print(f"\n=== Epistemic case: {label} ===")
+
+        prm_fixed = parametres()
+        prm_fixed.C0    = prm_base.C0
+        prm_fixed.u_max = prm_base.u_max
+        prm_fixed.L     = prm_base.L
+        prm_fixed.H     = prm_base.H
+        prm_fixed.Pe    = Pe_val
+        prm_fixed.Da    = Da_val
+
+        Q_vals, F_vals = int_aleatory_MC_ep_fix(
+            prm_fixed, N, nx, ny, seed
+        )
+
+        all_Q.append(Q_vals)
+        all_F.append(F_vals)
+
+    # Q_grid commun pour l'interpolation des CDFs
+    Q_min = min(Q[0] for Q in all_Q)
+    Q_max = max(Q[-1] for Q in all_Q)
+    Q_grid = np.linspace(Q_min, Q_max, 400)
+
+    F_min = np.ones_like(Q_grid)
+    F_max = np.zeros_like(Q_grid)
+
+    # Construction de l'enveloppe des CDFs (P-box)
+    for Q_vals, F_vals in zip(all_Q, all_F):
+        F_interp = np.interp(Q_grid, Q_vals, F_vals)
+        F_min = np.minimum(F_min, F_interp)
+        F_max = np.maximum(F_max, F_interp)
+
+    # --- Plot
+    plt.figure(figsize=(8,5))
+    plt.fill_between(Q_grid, F_min, F_max, color='lightgray', label="P-box")
+    plt.plot(Q_grid, F_min, 'k', lw=2, label="F_min", color='green')
+    plt.plot(Q_grid, F_max, 'k', lw=2, label="F_max", color='red')
+    plt.xlabel("Qc (mol/m²)")
+    plt.ylabel("CDF")
+    plt.grid(alpha=0.3)
+    plt.title("P-box of Qc (epistemic + aleatory)")
+    plt.legend()
+    plt.tight_layout()
+    plt.show()
+
+    return {"Q_grid": Q_grid, "F_min": F_min, "F_max": F_max}
 
 #Validation
 def Q_c_empirique(prm):
