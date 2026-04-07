@@ -29,8 +29,9 @@ analyses = "5"
 3 - Analyse de convergence avec MMS
 4 - Calcul du GCI
 5 - Monte-Carlo et analyse de sensibilité globale
+6 - Validation selon ASME V&V 20 (calcul de S, D, E, u_num, u_input, u_D, u_val et conclusion)
 
-Exemple: analyses = "14" --> donnera le tracé du profil de température et calculera le GCI
+Exemple: analyses = "4" --> donnera le tracé du profil de température et calculera le GCI
 """
 
 #Génération du profil de température
@@ -127,8 +128,6 @@ if "5" in analyses:
     corr = df.corr()["Q"].sort_values()
     print("\n----- GLOBAL SENSITIVITY (Pearson R) -----") #Need to verify this w. method etc.
     print(corr)
-
-
 
 #Validation
 
