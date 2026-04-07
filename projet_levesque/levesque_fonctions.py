@@ -19,8 +19,8 @@ class parametres():
     L = 10      #[m]
     H = 10      #[m]
     P = 1      #[m]
-    Pe = 0.5
-    Da = 50
+    Pe = 50
+    Da = 0.5
 prm = parametres()
 
 def concentration(nx, ny, prm, ordre = 2, mms = False):
