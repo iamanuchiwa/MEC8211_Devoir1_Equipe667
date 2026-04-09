@@ -284,7 +284,7 @@ def trace_profil(nx, ny, prm, mode = 1):
         plt.show()
 
 #Propagation des incertitudes
-# def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True, plot_cdf=True):
+def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True, plot_cdf=True):
     """
     Monte-Carlo propagation pour évaluer l'incertitude sur la quantité totale de matière adsorbée Qc
     Paramètres d'entrée:

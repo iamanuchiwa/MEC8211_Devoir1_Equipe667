@@ -21,7 +21,7 @@ except:
 #     Da = 50
 # prm = parametres()
 
-analyses = "5"
+analyses = "6"
 
 """
 1 - Profil de température
