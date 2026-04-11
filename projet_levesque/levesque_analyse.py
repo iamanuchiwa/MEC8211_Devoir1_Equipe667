@@ -21,7 +21,7 @@ except:
 #     Da = 50
 # prm = parametres()
 
-analyses = "6"
+analyses = "5"
 
 """
 1 - Profil de température
@@ -130,6 +130,31 @@ if "5" in analyses:
     # print(corr)
     print("\n=== MODE 5: P-BOX computation ===")
     pbox = pbox(prm, N=200, nx=129, ny=129, seed=42)
+
+    #Global sensitivity
+    print("\n=== GLOBAL SENSITIVITY (Pearson) ===")
+    sens_Q = pbox["sens_Q"]
+    sens_data = pbox["sens_data"]
+    df = pd.DataFrame({
+        "Q": sens_Q,
+        "C0": sens_data["C0"],
+        "u_max": sens_data["u_max"],
+        "L": sens_data["L"],
+        "H": sens_data["H"]
+    })
+
+    corr = df.corr()["Q"].drop("Q").sort_values(key=abs, ascending=False)
+
+    print(corr)
+
+    # Plot
+    plt.figure(figsize=(7,5))
+    corr.plot(kind="bar")
+    plt.ylabel("Correlation with Qc")
+    plt.title("Global Sensitivity (Pearson)")
+    plt.grid(alpha=0.3)
+    plt.tight_layout()
+    plt.show()
 
 #Validation
 

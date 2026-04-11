@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 from scipy.stats import norm, uniform
+from torch import seed
 
 #from projet_levesque.levesque_analyse import parametres
 class parametres():
@@ -391,6 +392,35 @@ def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True, plo
         "Da": np.array(Da_vals)
     }
 
+# Fonction pour générer un échantillonnage Latin Hypercube pour les paramètres aléatoires (C0, u_max, L, H) avec des distributions gaussiennes
+def lhs_norm_uni(N,prm_base, seed=42):
+    """
+    Génère un échantillonnage Latin Hypercube pour:
+    - Gaussien: C0, u_max, L, H
+    """
+    np.random.seed(seed)
+    d = 4  # nr. variables aléatoires (C0, u_max, L, H)
+    lhs = np.zeros((N, d))
+    
+    for j in range(d):
+        perm = np.random.permutation(N)
+        lhs[:, j] = (perm + np.random.rand(N)) / N
+        
+    # Transformation inverse pour les distributions gaussiennes
+
+    C0_lhs = norm.ppf(lhs[:, 0], prm_base.C0, 0.03 * prm_base.C0)
+    u_max_lhs = norm.ppf(lhs[:, 1], prm_base.u_max, 0.05 * prm_base.u_max)
+    L_lhs = norm.ppf(lhs[:, 2], prm_base.L, 0.01 * prm_base.L)
+    H_lhs = norm.ppf(lhs[:, 3], prm_base.H, 0.01 * prm_base.H)
+    
+    # Securisation pour éviter les valeurs négatives (en cas de queue de distribution)
+    C0_lhs = np.maximum(C0_lhs, 1e-12)
+    u_max_lhs = np.maximum(u_max_lhs, 1e-12)
+    L_lhs = np.maximum(L_lhs, 1e-12)
+    H_lhs = np.maximum(H_lhs, 1e-12)
+    
+    return C0_lhs, u_max_lhs, L_lhs, H_lhs
+
 # def plot_input_pdfs(C0_samples, C0_mu, C0_sigma, umax_samples, umax_mu, umax_sigma, L_samples, L_mu, L_sigma, H_samples, H_mu, H_sigma, Pe_samples, Pe_min, Pe_max, Da_samples, Da_min, Da_max):
     #Plot pdfs des entrées (gaussian pour les paramètres aléatoires et uniforme pour les paramètres épistémiques)
     #Utilisé dans Monte-Carlo pour visualiser les distributions d'entrée
@@ -450,11 +480,18 @@ def int_aleatory_MC_ep_fix(prm_fixed, N, nx, ny, seed):
     """
     Monte-Carlo aléatoire pour des paramètres épistémiques fixés (Pe, Da).
     Retourne les valeurs de Q triées et la grille de CDF correspondante.
+    Paramètres de LHS pour les paramètres aléatoires (C0, u_max, L, H) avec des distributions gaussiennes.
     """
+    C0_lhs, u_max_lhs, L_lhs, H_lhs = lhs_norm_uni(N, prm_fixed, seed)
+
     np.random.seed(seed)
     Q_vals = []
+    C0_vals = []
+    umax_vals = []
+    L_vals = []
+    H_vals = []
 
-    for _ in range(N):
+    for i in range(N):
 
         prm_m = parametres()
 
@@ -462,19 +499,35 @@ def int_aleatory_MC_ep_fix(prm_fixed, N, nx, ny, seed):
         prm_m.Pe = prm_fixed.Pe
         prm_m.Da = prm_fixed.Da
 
-        # aléatoire: Gaussian
-        prm_m.C0     = np.random.normal(prm_fixed.C0,   0.03 * prm_fixed.C0)
-        prm_m.u_max  = np.random.normal(prm_fixed.u_max,0.05 * prm_fixed.u_max)
-        prm_m.L      = np.random.normal(prm_fixed.L,    0.01 * prm_fixed.L)
-        prm_m.H      = np.random.normal(prm_fixed.H,    0.01 * prm_fixed.H)
+        # # aléatoire: Gaussian
+        # prm_m.C0     = np.random.normal(prm_fixed.C0,   0.03 * prm_fixed.C0)
+        # prm_m.u_max  = np.random.normal(prm_fixed.u_max,0.05 * prm_fixed.u_max)
+        # prm_m.L      = np.random.normal(prm_fixed.L,    0.01 * prm_fixed.L)
+        # prm_m.H      = np.random.normal(prm_fixed.H,    0.01 * prm_fixed.H)
 
-        # évaluer Qc
+        # Aleatory (LHS)
+        prm_m.C0 = C0_lhs[i]
+        prm_m.u_max = u_max_lhs[i]
+        prm_m.L = L_lhs[i]
+        prm_m.H = H_lhs[i]
+
+        # évaluer Qc et stocker les résultats
+        C0_vals.append(prm_m.C0)
+        umax_vals.append(prm_m.u_max)
+        L_vals.append(prm_m.L)
+        H_vals.append(prm_m.H)
         Q_vals.append(Q_c_simpson(nx, ny, prm_m, ordre=2, mms=False))
 
     Q_vals = np.sort(np.array(Q_vals))
+
     CDF = np.linspace(0, 1, len(Q_vals))
 
-    return Q_vals, CDF
+    return Q_vals, CDF, {
+    "C0": np.array(C0_vals),
+    "u_max": np.array(umax_vals),
+    "L": np.array(L_vals),
+    "H": np.array(H_vals)
+    }
 
 def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
     """
@@ -508,7 +561,7 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
         prm_fixed.Pe    = Pe_val
         prm_fixed.Da    = Da_val
 
-        Q_vals, F_vals = int_aleatory_MC_ep_fix(
+        Q_vals, F_vals, samples = int_aleatory_MC_ep_fix(
             prm_fixed, N, nx, ny, seed
         )
 
@@ -529,6 +582,10 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
         F_min = np.minimum(F_min, F_interp)
         F_max = np.maximum(F_max, F_interp)
 
+    if label == "Pe_mid, Da_mid":  # or just first case
+        sens_data = samples
+        sens_Q = Q_vals
+
     # --- Plot
     plt.figure(figsize=(8,5))
     plt.fill_between(Q_grid, F_min, F_max, color='lightgray', label="P-box")
@@ -542,7 +599,7 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
     plt.tight_layout()
     plt.show()
 
-    return {"Q_grid": Q_grid, "F_min": F_min, "F_max": F_max}
+    return {"Q_grid": Q_grid, "F_min": F_min, "F_max": F_max, "sens_Q": sens_Q, "sens_data": sens_data}
 
 #Validation
 def Q_c_empirique(prm):
