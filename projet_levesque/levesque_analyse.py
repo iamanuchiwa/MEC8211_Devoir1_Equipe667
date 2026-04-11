@@ -131,9 +131,10 @@ if "5" in analyses:
     print("\n=== MODE 5: P-BOX computation ===")
     pbox = pbox(prm, N=200, nx=129, ny=129, seed=42)
 
-    #-
+    #Global sensitivity
     print("\n=== GLOBAL SENSITIVITY (Pearson) ===")
-    sens_data = monte_carlo_Qc(prm, N=500, nx=129)
+    sens_Q = pbox["sens_Q"]
+    sens_data = pbox["sens_data"]
     df = pd.DataFrame({
         "Q": sens_Q,
         "C0": sens_data["C0"],

@@ -597,7 +597,7 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
     plt.tight_layout()
     plt.show()
 
-    return {"Q_grid": Q_grid, "F_min": F_min, "F_max": F_max}
+    return {"Q_grid": Q_grid, "F_min": F_min, "F_max": F_max, "sens_Q": sens_Q, "sens_data": sens_data}
 
 #Validation
 def Q_c_empirique(prm):
