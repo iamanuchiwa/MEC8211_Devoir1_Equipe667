@@ -21,7 +21,7 @@ except:
 #     Da = 50
 # prm = parametres()
 
-analyses = "5"
+analyses = "4"
 
 """
 1 - Profil de température
@@ -104,9 +104,12 @@ if "4" in analyses:
         Q_i = Q_c_simpson(n, n, prm, 2)
         Q.append(Q_i)
 
-    ordre_obs = np.log(abs((Q[2] - Q[1])/(Q[1] - Q[0])))/np.log(r)
-    print(Q)
-    print("Ordre observé: ", ordre_obs)
+    ordre_obs = np.log(abs((Q[2] - Q[1])/(Q[1] - Q[0]))) / np.log(r)
+    # ordre corrigé itératif
+    p = ordre_iteratif(Q[0], Q[1], Q[2], r, p0=ordre_obs)
+
+    print("Ordre observé (brut): ", ordre_obs)
+    print("Ordre corrigé (itératif): ", p)
 
     if abs((ordre_obs - p_f)/p_f) > 0.1:
         p = min(max(0.5, ordre_obs), p_f)

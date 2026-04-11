@@ -284,6 +284,21 @@ def trace_profil(nx, ny, prm, mode = 1):
         plt.title(f'Terme source analytique\nnx = {nx} et ny = {ny}')
         plt.show()
 
+
+#ordre observé avec formule itérative
+def ordre_iteratif(f1, f2, f3, r, p0=2, tol=1e-6, max_iter=50):
+    p = p0
+
+    for k in range(max_iter):
+        num = (r**p - 1)*((f3 - f2)/(f2 - f1)) + r**p
+        p_new = np.log(abs(num))/np.log(r*r)
+
+        if abs(p_new - p) < tol:
+            return p_new
+        p = p_new
+
+    return p  # si pas convergé
+
 #Propagation des incertitudes
 def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True, plot_cdf=True):
     """
