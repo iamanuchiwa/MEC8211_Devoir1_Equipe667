@@ -542,7 +542,7 @@ def int_aleatory_MC_ep_fix(prm_fixed, N, nx, ny, seed):
     "u_max": np.array(umax_vals),
     "L": np.array(L_vals),
     "H": np.array(H_vals)
-    }
+    }, 
 
 def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
     """
@@ -565,7 +565,8 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
     all_Q = []
     all_F = []
 
-    for label, Pe_val, Da_val in epistemic_cases:
+    #for label, Pe_val, Da_val in epistemic_cases:
+    for i, (label, Pe_val, Da_val) in enumerate(epistemic_cases):
         print(f"\n=== Epistemic case: {label} ===")
 
         prm_fixed = parametres()
@@ -582,6 +583,10 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
 
         all_Q.append(Q_vals)
         all_F.append(F_vals)
+        if i == 0:
+            sens_data = samples
+            sens_Q = Q_vals
+    
 
     # Q_grid commun pour l'interpolation des CDFs
     Q_min = min(Q[0] for Q in all_Q)
@@ -597,15 +602,15 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
         F_min = np.minimum(F_min, F_interp)
         F_max = np.maximum(F_max, F_interp)
 
-    if label == "Pe_mid, Da_mid":  # or just first case
+    if len(all_Q) == 1:  # first case only for sensitivity analysis
         sens_data = samples
         sens_Q = Q_vals
 
     # --- Plot
     plt.figure(figsize=(8,5))
     plt.fill_between(Q_grid, F_min, F_max, color='lightgray', label="P-box")
-    plt.plot(Q_grid, F_min, 'k', lw=2, label="F_min", color='green')
-    plt.plot(Q_grid, F_max, 'k', lw=2, label="F_max", color='red')
+    plt.plot(Q_grid, F_min, lw=2, label="F_min", color='green')
+    plt.plot(Q_grid, F_max, lw=2, label="F_max", color='red')
     plt.xlabel("Qc (mol/m²)")
     plt.ylabel("CDF")
     plt.grid(alpha=0.3)
