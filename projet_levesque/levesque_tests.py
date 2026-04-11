@@ -15,17 +15,6 @@ def prm_base():
     prm.u_max = 1.0
     return prm
 
-@pytest.fixture
-def prm_haut_pe():
-    """Paramètres avec un grand nombre de Péclet pour la validation empirique."""
-    prm = parametres()
-    prm.C0 = 1.0
-    prm.L = 10.0
-    prm.H = 10.0
-    prm.Pe = 200.0  # Pe > 100 requis pour la formule empirique
-    prm.Da = 0.5
-    prm.u_max = 1.0
-    return prm
 
 # TESTS PARAMÉTRÉS (Ordre 1 et Ordre 2) 
 

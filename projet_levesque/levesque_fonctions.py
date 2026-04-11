@@ -1,6 +1,6 @@
 """
 Ce code contient les fonctions nécessaire pour:
-- Résoudre le problème de Levesque 2D 
+- Résoudre le problème de Levesque 2D
 - Calculer la qauntité totale de matière adsorbée
 - Créer des graphiques de convergence à partir d'une MMS
 
@@ -37,7 +37,7 @@ def concentration(nx, ny, prm, ordre = 2, mms = False):
             - Pe: nombre de Péclet (adimensionnel)
             - Da: nombre de Damkohler (adimensionnel)
         + ordre
-            - 1: ordre 1 utilisé pour l'évaluation des points du centre 
+            - 1: ordre 1 utilisé pour l'évaluation des points du centre
             - 2: ordre 2 utilisé partout
         + mms: True pour utiliser le terme source
     Sortie:
@@ -52,10 +52,10 @@ def concentration(nx, ny, prm, ordre = 2, mms = False):
     C0 = prm.C0
     Ds = prm.u_max*H/prm.Pe
     k = prm.Da*Ds/prm.L
-    
+
     if mms:
         f_mms = genere_mms(prm)
-    
+
     #Calcul du nombre de noeuds N, des pas dx et dy et des vecteurs de position et vitesses
     N = nx * ny
     dx = prm.L/(nx - 1)
@@ -84,13 +84,13 @@ def concentration(nx, ny, prm, ordre = 2, mms = False):
         if mms:
             b[i] = f_mms[3]((nx - 1)*dx, (i//nx)*dy)
     #Paroi du haut
-    
-        #Condition de Neumann 
+
+        #Condition de Neumann
     for i in range(N-nx, N):
         A[i, i] = 3/(2*dy)
         A[i, i - nx] = -4/(2*dy)
         A[i, i - 2*nx] = 1/(2*dy)
-            
+
         if mms:
             b[i] = f_mms[4]((i % nx)*dx, (ny - 1)*dy)
 
@@ -121,7 +121,7 @@ def concentration(nx, ny, prm, ordre = 2, mms = False):
                 A[n, n + 1] = off_x
                 A[n, n + nx] = off_y
                 A[n, n - nx] = off_y
-        
+
             else:
                 # Advection Ordre 2
                 if i == 1:
@@ -134,8 +134,8 @@ def concentration(nx, ny, prm, ordre = 2, mms = False):
                     A[n, n] = 3*u/(2*dx) + diag_diff
                     A[n, n - 1] = -2*u/dx + off_x
                     A[n, n - 2] = u/(2*dx)
-                    A[n, n + 1] = off_x 
-            
+                    A[n, n + 1] = off_x
+
                 A[n, n + nx] = off_y
                 A[n, n - nx] = off_y
 
@@ -163,7 +163,7 @@ def Q_c_simpson(nx, ny, prm, ordre = 2, mms = False):
             - Da: nombre de Damkohler (adimensionnel)
         + ordre
             - 1: ordre 1 utilisé pour l'évaluation des points à gauche du centre
-            - 2: ordre 2 utilisé partout 
+            - 2: ordre 2 utilisé partout
     Sortie:
         - Qc: quantité totale de matière adsorbée par unité de surface (mol/m^2)
     '''
@@ -187,13 +187,13 @@ def Q_c_simpson(nx, ny, prm, ordre = 2, mms = False):
     for i in range(0, N):
         Qc += C_bas[2*i] + 4*C_bas[2*i + 1] + C_bas[2*i + 2]
 
-    
+
     return Qc*h*prm.H*k/(3*Ds)
 
 
 def genere_mms(prm):
     """
-    Génère la MMS en utilisant les paramètres réels (u_max, Ds, k) 
+    Génère la MMS en utilisant les paramètres réels (u_max, Ds, k)
     calculés à partir de Pe et Da.
     """
     x, y = sp.symbols("x y")
@@ -207,18 +207,18 @@ def genere_mms(prm):
     Cy = sp.diff(C, y)
     Cyy = sp.diff(C, y, y)
 
-    #Terme source 
+    #Terme source
     s = u * Cx - Ds_sym * (Cxx + Cyy)
 
     #Préparation des valeurs numériques
     ds_val = (prm.u_max * prm.H) / prm.Pe
     k_val = (prm.Da * ds_val) / prm.L
-    
+
     params = {
-        C0_sym: prm.C0, 
-        L_sym: prm.L, 
-        H_sym: prm.H, 
-        u_max_sym: prm.u_max, 
+        C0_sym: prm.C0,
+        L_sym: prm.L,
+        H_sym: prm.H,
+        u_max_sym: prm.u_max,
         Ds_sym: ds_val,
         k_sym: k_val
     }
@@ -274,7 +274,7 @@ def trace_profil(nx, ny, prm, mode = 1):
         plt.ylabel('y [m]')
         plt.title(f'Profil de concentration de la solution manufacturée\nnx = {nx} et ny = {ny}')
         plt.show()
-        
+
         plt.figure(figsize=(7,5))
         plt.pcolormesh(X, Y, S, shading='auto')
         plt.colorbar(label='Concentration')
@@ -289,7 +289,8 @@ def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True, plo
     Monte-Carlo propagation pour évaluer l'incertitude sur la quantité totale de matière adsorbée Qc
     Paramètres d'entrée:
     prm_base : parametres
-        Paramètre de base pour la simulation, contenant les valeurs moyennes des paramètres d'entrée. Utilise prm dans analyse
+        Paramètre de base pour la simulation, contenant les valeurs moyennes des paramètres d'entrée.
+        Utilise prm dans analyse
     N : int
         Nr de simulations Monte-Carlo à effectuer.
     nx, ny : int
@@ -303,7 +304,8 @@ def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True, plo
 
     retourns:
     results : dict
-        archive des résultats de la simulation Monte-Carlo, contenant les valeurs de Qc et les échantillons des paramètres d'entrée pour l'analyse de sensibilité.
+        archive des résultats de la simulation Monte-Carlo, contenant les valeurs de Qc et les échantillons des paramètres
+        d'entrée pour l'analyse de sensibilité.
     """
 
     np.random.seed(seed)
@@ -545,17 +547,17 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
 #Validation
 def Q_c_empirique(prm):
     '''
-    Calcule la quantité totale de matière adsorbée Qc (mol/m^2) 
+    Calcule la quantité totale de matière adsorbée Qc (mol/m^2)
     à partir de la relation empirique fournie dans l'énoncé.
     Valide uniquement pour Pe > 100.
     '''
     # Calcul de Ds à partir de Pe
     Ds = prm.u_max * prm.H / prm.Pe
-    
-    # Intégrale de la solution empirique: 
+
+    # Intégrale de la solution empirique:
     # Qc_emp = C0 * 0.854 * (u_max * H^2 / Ds)**(1/3) * (3/2) * L**(2/3)
     terme1 = 0.854 * (prm.u_max * (prm.H**2) / Ds)**(1/3)
     terme2 = 1.5 * (prm.L**(2/3))
-    
+
     Qc_emp = prm.C0 * terme1 * terme2
     return Qc_emp
