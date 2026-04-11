@@ -1,6 +1,6 @@
 """
 Ce code contient les fonctions nécessaire pour:
-- Résoudre le problème de Levesque 2D 
+- Résoudre le problème de Levesque 2D
 - Calculer la qauntité totale de matière adsorbée
 - Créer des graphiques de convergence à partir d'une MMS
 
@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from scipy import sparse
 from scipy.sparse.linalg import spsolve
 from scipy.stats import norm, uniform
+from torch import seed
 
 #from projet_levesque.levesque_analyse import parametres
 class parametres():
@@ -37,7 +38,7 @@ def concentration(nx, ny, prm, ordre = 2, mms = False):
             - Pe: nombre de Péclet (adimensionnel)
             - Da: nombre de Damkohler (adimensionnel)
         + ordre
-            - 1: ordre 1 utilisé pour l'évaluation des points du centre 
+            - 1: ordre 1 utilisé pour l'évaluation des points du centre
             - 2: ordre 2 utilisé partout
         + mms: True pour utiliser le terme source
     Sortie:
@@ -52,10 +53,10 @@ def concentration(nx, ny, prm, ordre = 2, mms = False):
     C0 = prm.C0
     Ds = prm.u_max*H/prm.Pe
     k = prm.Da*Ds/prm.L
-    
+
     if mms:
         f_mms = genere_mms(prm)
-    
+
     #Calcul du nombre de noeuds N, des pas dx et dy et des vecteurs de position et vitesses
     N = nx * ny
     dx = prm.L/(nx - 1)
@@ -84,13 +85,13 @@ def concentration(nx, ny, prm, ordre = 2, mms = False):
         if mms:
             b[i] = f_mms[3]((nx - 1)*dx, (i//nx)*dy)
     #Paroi du haut
-    
-        #Condition de Neumann 
+
+        #Condition de Neumann
     for i in range(N-nx, N):
         A[i, i] = 3/(2*dy)
         A[i, i - nx] = -4/(2*dy)
         A[i, i - 2*nx] = 1/(2*dy)
-            
+
         if mms:
             b[i] = f_mms[4]((i % nx)*dx, (ny - 1)*dy)
 
@@ -121,7 +122,7 @@ def concentration(nx, ny, prm, ordre = 2, mms = False):
                 A[n, n + 1] = off_x
                 A[n, n + nx] = off_y
                 A[n, n - nx] = off_y
-        
+
             else:
                 # Advection Ordre 2
                 if i == 1:
@@ -134,8 +135,8 @@ def concentration(nx, ny, prm, ordre = 2, mms = False):
                     A[n, n] = 3*u/(2*dx) + diag_diff
                     A[n, n - 1] = -2*u/dx + off_x
                     A[n, n - 2] = u/(2*dx)
-                    A[n, n + 1] = off_x 
-            
+                    A[n, n + 1] = off_x
+
                 A[n, n + nx] = off_y
                 A[n, n - nx] = off_y
 
@@ -163,7 +164,7 @@ def Q_c_simpson(nx, ny, prm, ordre = 2, mms = False):
             - Da: nombre de Damkohler (adimensionnel)
         + ordre
             - 1: ordre 1 utilisé pour l'évaluation des points à gauche du centre
-            - 2: ordre 2 utilisé partout 
+            - 2: ordre 2 utilisé partout
     Sortie:
         - Qc: quantité totale de matière adsorbée par unité de surface (mol/m^2)
     '''
@@ -187,13 +188,13 @@ def Q_c_simpson(nx, ny, prm, ordre = 2, mms = False):
     for i in range(0, N):
         Qc += C_bas[2*i] + 4*C_bas[2*i + 1] + C_bas[2*i + 2]
 
-    
+
     return Qc*h*prm.H*k/(3*Ds)
 
 
 def genere_mms(prm):
     """
-    Génère la MMS en utilisant les paramètres réels (u_max, Ds, k) 
+    Génère la MMS en utilisant les paramètres réels (u_max, Ds, k)
     calculés à partir de Pe et Da.
     """
     x, y = sp.symbols("x y")
@@ -207,18 +208,18 @@ def genere_mms(prm):
     Cy = sp.diff(C, y)
     Cyy = sp.diff(C, y, y)
 
-    #Terme source 
+    #Terme source
     s = u * Cx - Ds_sym * (Cxx + Cyy)
 
     #Préparation des valeurs numériques
     ds_val = (prm.u_max * prm.H) / prm.Pe
     k_val = (prm.Da * ds_val) / prm.L
-    
+
     params = {
-        C0_sym: prm.C0, 
-        L_sym: prm.L, 
-        H_sym: prm.H, 
-        u_max_sym: prm.u_max, 
+        C0_sym: prm.C0,
+        L_sym: prm.L,
+        H_sym: prm.H,
+        u_max_sym: prm.u_max,
         Ds_sym: ds_val,
         k_sym: k_val
     }
@@ -274,7 +275,7 @@ def trace_profil(nx, ny, prm, mode = 1):
         plt.ylabel('y [m]')
         plt.title(f'Profil de concentration de la solution manufacturée\nnx = {nx} et ny = {ny}')
         plt.show()
-        
+
         plt.figure(figsize=(7,5))
         plt.pcolormesh(X, Y, S, shading='auto')
         plt.colorbar(label='Concentration')
@@ -389,6 +390,35 @@ def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True, plo
         "Da": np.array(Da_vals)
     }
 
+# Fonction pour générer un échantillonnage Latin Hypercube pour les paramètres aléatoires (C0, u_max, L, H) avec des distributions gaussiennes
+def lhs_norm_uni(N,prm_base, seed=42):
+    """
+    Génère un échantillonnage Latin Hypercube pour:
+    - Gaussien: C0, u_max, L, H
+    """
+    np.random.seed(seed)
+    d = 4  # nr. variables aléatoires (C0, u_max, L, H)
+    lhs = np.zeros((N, d))
+    
+    for j in range(d):
+        perm = np.random.permutation(N)
+        lhs[:, j] = (perm + np.random.rand(N)) / N
+        
+    # Transformation inverse pour les distributions gaussiennes
+
+    C0_lhs = norm.ppf(lhs[:, 0], prm_base.C0, 0.03 * prm_base.C0)
+    u_max_lhs = norm.ppf(lhs[:, 1], prm_base.u_max, 0.05 * prm_base.u_max)
+    L_lhs = norm.ppf(lhs[:, 2], prm_base.L, 0.01 * prm_base.L)
+    H_lhs = norm.ppf(lhs[:, 3], prm_base.H, 0.01 * prm_base.H)
+    
+    # Securisation pour éviter les valeurs négatives (en cas de queue de distribution)
+    C0_lhs = np.maximum(C0_lhs, 1e-12)
+    u_max_lhs = np.maximum(u_max_lhs, 1e-12)
+    L_lhs = np.maximum(L_lhs, 1e-12)
+    H_lhs = np.maximum(H_lhs, 1e-12)
+    
+    return C0_lhs, u_max_lhs, L_lhs, H_lhs
+
 # def plot_input_pdfs(C0_samples, C0_mu, C0_sigma, umax_samples, umax_mu, umax_sigma, L_samples, L_mu, L_sigma, H_samples, H_mu, H_sigma, Pe_samples, Pe_min, Pe_max, Da_samples, Da_min, Da_max):
     #Plot pdfs des entrées (gaussian pour les paramètres aléatoires et uniforme pour les paramètres épistémiques)
     #Utilisé dans Monte-Carlo pour visualiser les distributions d'entrée
@@ -448,11 +478,18 @@ def int_aleatory_MC_ep_fix(prm_fixed, N, nx, ny, seed):
     """
     Monte-Carlo aléatoire pour des paramètres épistémiques fixés (Pe, Da).
     Retourne les valeurs de Q triées et la grille de CDF correspondante.
+    Paramètres de LHS pour les paramètres aléatoires (C0, u_max, L, H) avec des distributions gaussiennes.
     """
+    C0_lhs, u_max_lhs, L_lhs, H_lhs = lhs_norm_uni(N, prm_fixed, seed)
+
     np.random.seed(seed)
     Q_vals = []
+    C0_vals = []
+    umax_vals = []
+    L_vals = []
+    H_vals = []
 
-    for _ in range(N):
+    for i in range(N):
 
         prm_m = parametres()
 
@@ -460,19 +497,35 @@ def int_aleatory_MC_ep_fix(prm_fixed, N, nx, ny, seed):
         prm_m.Pe = prm_fixed.Pe
         prm_m.Da = prm_fixed.Da
 
-        # aléatoire: Gaussian
-        prm_m.C0     = np.random.normal(prm_fixed.C0,   0.03 * prm_fixed.C0)
-        prm_m.u_max  = np.random.normal(prm_fixed.u_max,0.05 * prm_fixed.u_max)
-        prm_m.L      = np.random.normal(prm_fixed.L,    0.01 * prm_fixed.L)
-        prm_m.H      = np.random.normal(prm_fixed.H,    0.01 * prm_fixed.H)
+        # # aléatoire: Gaussian
+        # prm_m.C0     = np.random.normal(prm_fixed.C0,   0.03 * prm_fixed.C0)
+        # prm_m.u_max  = np.random.normal(prm_fixed.u_max,0.05 * prm_fixed.u_max)
+        # prm_m.L      = np.random.normal(prm_fixed.L,    0.01 * prm_fixed.L)
+        # prm_m.H      = np.random.normal(prm_fixed.H,    0.01 * prm_fixed.H)
 
-        # évaluer Qc
+        # Aleatory (LHS)
+        prm_m.C0 = C0_lhs[i]
+        prm_m.u_max = u_max_lhs[i]
+        prm_m.L = L_lhs[i]
+        prm_m.H = H_lhs[i]
+
+        # évaluer Qc et stocker les résultats
+        C0_vals.append(prm_m.C0)
+        umax_vals.append(prm_m.u_max)
+        L_vals.append(prm_m.L)
+        H_vals.append(prm_m.H)
         Q_vals.append(Q_c_simpson(nx, ny, prm_m, ordre=2, mms=False))
 
     Q_vals = np.sort(np.array(Q_vals))
+
     CDF = np.linspace(0, 1, len(Q_vals))
 
-    return Q_vals, CDF
+    return Q_vals, CDF, {
+    "C0": np.array(C0_vals),
+    "u_max": np.array(umax_vals),
+    "L": np.array(L_vals),
+    "H": np.array(H_vals)
+    }
 
 def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
     """
@@ -506,7 +559,7 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
         prm_fixed.Pe    = Pe_val
         prm_fixed.Da    = Da_val
 
-        Q_vals, F_vals = int_aleatory_MC_ep_fix(
+        Q_vals, F_vals, samples = int_aleatory_MC_ep_fix(
             prm_fixed, N, nx, ny, seed
         )
 
@@ -527,6 +580,10 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
         F_min = np.minimum(F_min, F_interp)
         F_max = np.maximum(F_max, F_interp)
 
+    if label == "Pe_mid, Da_mid":  # or just first case
+        sens_data = samples
+        sens_Q = Q_vals
+
     # --- Plot
     plt.figure(figsize=(8,5))
     plt.fill_between(Q_grid, F_min, F_max, color='lightgray', label="P-box")
@@ -545,17 +602,17 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
 #Validation
 def Q_c_empirique(prm):
     '''
-    Calcule la quantité totale de matière adsorbée Qc (mol/m^2) 
+    Calcule la quantité totale de matière adsorbée Qc (mol/m^2)
     à partir de la relation empirique fournie dans l'énoncé.
     Valide uniquement pour Pe > 100.
     '''
     # Calcul de Ds à partir de Pe
     Ds = prm.u_max * prm.H / prm.Pe
-    
-    # Intégrale de la solution empirique: 
+
+    # Intégrale de la solution empirique:
     # Qc_emp = C0 * 0.854 * (u_max * H^2 / Ds)**(1/3) * (3/2) * L**(2/3)
     terme1 = 0.854 * (prm.u_max * (prm.H**2) / Ds)**(1/3)
     terme2 = 1.5 * (prm.L**(2/3))
-    
+
     Qc_emp = prm.C0 * terme1 * terme2
     return Qc_emp
