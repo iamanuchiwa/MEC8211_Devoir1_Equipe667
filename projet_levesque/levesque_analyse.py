@@ -5,6 +5,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.stats import norm, uniform
+from timeit import default_timer as timer
 try:
     from levesque_fonctions import *
 except:
@@ -131,33 +132,40 @@ if "5" in analyses:
     # corr = df.corr()["Q"].sort_values()
     # print("\n----- GLOBAL SENSITIVITY (Pearson R) -----") #Need to verify this w. method etc.
     # print(corr)
+    start = timer()
     print("\n=== MODE 5: P-BOX computation ===")
-    pbox = pbox(prm, N=200, nx=129, ny=129, seed=42)
+    pbox_results = pbox(prm, N=200, nx=129, ny=129, seed=42)
+    end = timer()
+    print(f"Runtime p-box: {end - start:.2f} seconds")
 
-    #Global sensitivity
-    print("\n=== GLOBAL SENSITIVITY (Pearson) ===")
-    sens_Q = pbox["sens_Q"]
-    sens_data = pbox["sens_data"]
-    df = pd.DataFrame({
-        "Q": sens_Q,
-        "C0": sens_data["C0"],
-        "u_max": sens_data["u_max"],
-        "L": sens_data["L"],
-        "H": sens_data["H"]
-    })
+    start = timer()
+    print("\n=== GLOBAL SENSITIVITY ANALYSIS ===")
+    sa = global_sensitivity_analysis(pbox_results)
+    end = timer()
+    print(f"Runtime Sensitivity analysis: {end - start:.2f} seconds")
+    # #Global sensitivity
+    # print("\n=== GLOBAL SENSITIVITY (Pearson) ===")
+    # sens_Q = pbox["sens_Q"]
+    # sens_data = pbox["sens_data"]
+    # df = pd.DataFrame({
+    #     "Q": sens_Q,
+    #     "C0": sens_data["C0"],
+    #     "u_max": sens_data["u_max"],
+    #     "L": sens_data["L"],
+    #     "H": sens_data["H"]
+    # })
 
-    corr = df.corr()["Q"].drop("Q").sort_values(key=abs, ascending=False)
+    # corr = df.corr()["Q"].drop("Q").sort_values(key=abs, ascending=False)
+    # print(corr)
 
-    print(corr)
-
-    # Plot
-    plt.figure(figsize=(7,5))
-    corr.plot(kind="bar")
-    plt.ylabel("Correlation with Qc")
-    plt.title("Global Sensitivity (Pearson)")
-    plt.grid(alpha=0.3)
-    plt.tight_layout()
-    plt.show()
+    # # Plot
+    # plt.figure(figsize=(7,5))
+    # corr.plot(kind="bar")
+    # plt.ylabel("Correlation with Qc")
+    # plt.title("Global Sensitivity (Pearson)")
+    # plt.grid(alpha=0.3)
+    # plt.tight_layout()
+    # plt.show()
 
 #Validation
 

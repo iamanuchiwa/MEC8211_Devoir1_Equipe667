@@ -526,23 +526,38 @@ def int_aleatory_MC_ep_fix(prm_fixed, N, nx, ny, seed):
         prm_m.L = L_lhs[i]
         prm_m.H = H_lhs[i]
 
+        q = Q_c_simpson(nx, ny, prm_m, ordre=2, mms=False) #NEW
+        Q_vals.append(q) #NEW
         # évaluer Qc et stocker les résultats
         C0_vals.append(prm_m.C0)
         umax_vals.append(prm_m.u_max)
         L_vals.append(prm_m.L)
         H_vals.append(prm_m.H)
-        Q_vals.append(Q_c_simpson(nx, ny, prm_m, ordre=2, mms=False))
+        #Q_vals.append(Q_c_simpson(nx, ny, prm_m, ordre=2, mms=False)) IF NEW PART DOESN*T WORK, UNCOMMENT
 
-    Q_vals = np.sort(np.array(Q_vals))
+    #Q_vals = np.sort(np.array(Q_vals)) IF NEW PART DOESN*T WORK, UNCOMMENT
+ 
+    # CDF = np.linspace(0, 1, len(Q_vals)) IF THE PART BELLLOW DOESN*T WORK; THIS IS FROM THE ORIGINAL!!
+    Q_arr    = np.array(Q_vals)          # ← UNSORTED: keeps alignment with samples
+    Q_sorted = np.sort(Q_arr)            #   sorted copy only for the CDF
+    CDF      = np.linspace(0, 1, N)
 
-    CDF = np.linspace(0, 1, len(Q_vals))
+    samples = {
+        "Q":     Q_arr,                  # aligned, unsorted
+        "C0":    np.array(C0_vals),
+        "u_max": np.array(umax_vals),
+        "L":     np.array(L_vals),
+        "H":     np.array(H_vals),
+    }
+    return Q_sorted, CDF, samples
 
-    return Q_vals, CDF, {
-    "C0": np.array(C0_vals),
-    "u_max": np.array(umax_vals),
-    "L": np.array(L_vals),
-    "H": np.array(H_vals)
-    }, 
+    ## IF THE PART BELLLOW DOESN*T WORK; THIS IS FROM THE ORIGINAL!!
+    # return Q_vals, CDF, {
+    # "C0": np.array(C0_vals),
+    # "u_max": np.array(umax_vals),
+    # "L": np.array(L_vals), 
+    # "H": np.array(H_vals)
+    # }, 
 
 def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
     """
@@ -562,64 +577,213 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
         ("Pe_max, Da_max", Pe_max, Da_max),
     ]
 
-    all_Q = []
+    all_Q_sorted = []
     all_F = []
+    pooled = {k: [] for k in ("Q", "C0", "u_max", "L", "H")}  # NEW pour stocker tous les échantillons aléatoires de tous les cas épistémiques
 
-    #for label, Pe_val, Da_val in epistemic_cases:
-    for i, (label, Pe_val, Da_val) in enumerate(epistemic_cases):
+    # #COMMENTED AND REPLACED WITH OTHER FOR LOOP, IF IT DOESN'T WORK, LOOK AT THIS
+    # #for label, Pe_val, Da_val in epistemic_cases:
+    # for i, (label, Pe_val, Da_val) in enumerate(epistemic_cases):
+    #     print(f"\n=== Epistemic case: {label} ===")
+
+    #     prm_fixed = parametres()
+    #     prm_fixed.C0    = prm_base.C0
+    #     prm_fixed.u_max = prm_base.u_max
+    #     prm_fixed.L     = prm_base.L
+    #     prm_fixed.H     = prm_base.H
+    #     prm_fixed.Pe    = Pe_val
+    #     prm_fixed.Da    = Da_val
+
+    #     Q_vals, F_vals, samples = int_aleatory_MC_ep_fix(
+    #         prm_fixed, N, nx, ny, seed
+    #     )
+
+    #     all_Q.append(Q_vals)
+    #     all_F.append(F_vals)
+    #     if i == 0:
+    #         sens_data = samples
+    #         sens_Q = Q_vals
+    for label, Pe_val, Da_val in epistemic_cases:
         print(f"\n=== Epistemic case: {label} ===")
 
-        prm_fixed = parametres()
-        prm_fixed.C0    = prm_base.C0
-        prm_fixed.u_max = prm_base.u_max
-        prm_fixed.L     = prm_base.L
-        prm_fixed.H     = prm_base.H
-        prm_fixed.Pe    = Pe_val
-        prm_fixed.Da    = Da_val
+        prm_fixed        = parametres()
+        prm_fixed.C0     = prm_base.C0
+        prm_fixed.u_max  = prm_base.u_max
+        prm_fixed.L      = prm_base.L
+        prm_fixed.H      = prm_base.H
+        prm_fixed.Pe     = Pe_val
+        prm_fixed.Da     = Da_val
 
-        Q_vals, F_vals, samples = int_aleatory_MC_ep_fix(
+        Q_sorted, F_vals, samples = int_aleatory_MC_ep_fix(
             prm_fixed, N, nx, ny, seed
         )
-
-        all_Q.append(Q_vals)
+        all_Q_sorted.append(Q_sorted)
         all_F.append(F_vals)
-        if i == 0:
-            sens_data = samples
-            sens_Q = Q_vals
-    
+
+        for k in pooled:               # pool aligned samples for global SA
+            pooled[k].append(samples[k])
+
+    # convert pooled lists to arrays
+    sens_data = {k: np.concatenate(pooled[k]) for k in pooled}
 
     # Q_grid commun pour l'interpolation des CDFs
-    Q_min = min(Q[0] for Q in all_Q)
-    Q_max = max(Q[-1] for Q in all_Q)
+    Q_min = min(Q[0] for Q in all_Q_sorted)  ##prev. all_Q ,   min des premiers éléments (min de chaque CDF)
+    Q_max = max(Q[-1] for Q in all_Q_sorted) ##prev. all_Q ,   max des derniers éléments (max de chaque CDF)
     Q_grid = np.linspace(Q_min, Q_max, 400)
 
     F_min = np.ones_like(Q_grid)
     F_max = np.zeros_like(Q_grid)
 
     # Construction de l'enveloppe des CDFs (P-box)
-    for Q_vals, F_vals in zip(all_Q, all_F):
+    for Q_vals, F_vals in zip(all_Q_sorted, all_F):
         F_interp = np.interp(Q_grid, Q_vals, F_vals)
         F_min = np.minimum(F_min, F_interp)
         F_max = np.maximum(F_max, F_interp)
 
-    if len(all_Q) == 1:  # first case only for sensitivity analysis
-        sens_data = samples
-        sens_Q = Q_vals
+    # if len(all_Q) == 1:  # first case only for sensitivity analysis
+    #     sens_data = samples
+    #     sens_Q = Q_vals
 
-    # --- Plot
-    plt.figure(figsize=(8,5))
-    plt.fill_between(Q_grid, F_min, F_max, color='lightgray', label="P-box")
-    plt.plot(Q_grid, F_min, lw=2, label="F_min", color='green')
-    plt.plot(Q_grid, F_max, lw=2, label="F_max", color='red')
+    # # Prev. plotting
+    # # --- Plot
+    # plt.figure(figsize=(8,5))
+    # plt.fill_between(Q_grid, F_min, F_max, color='lightgray', label="P-box")
+    # plt.plot(Q_grid, F_min, lw=2, label="F_min", color='green')
+    # plt.plot(Q_grid, F_max, lw=2, label="F_max", color='red')
+    # plt.xlabel("Qc (mol/m²)")
+    # plt.ylabel("CDF")
+    # plt.grid(alpha=0.3)
+    # plt.title("P-box of Qc (epistemic + aleatory)")
+    # plt.legend()
+    # plt.tight_layout()
+    # plt.show()
+
+    # P-box plot
+    plt.figure(figsize=(8, 5))
+    plt.fill_between(Q_grid, F_min, F_max, color="lightgray", label="P-box")
+    plt.plot(Q_grid, F_min, lw=2, color="green", label="F_min")
+    plt.plot(Q_grid, F_max, lw=2, color="red",   label="F_max")
     plt.xlabel("Qc (mol/m²)")
     plt.ylabel("CDF")
     plt.grid(alpha=0.3)
-    plt.title("P-box of Qc (epistemic + aleatory)")
+    plt.title("P-box of Qc  (epistemic × aleatory uncertainty)")
     plt.legend()
     plt.tight_layout()
     plt.show()
 
-    return {"Q_grid": Q_grid, "F_min": F_min, "F_max": F_max, "sens_Q": sens_Q, "sens_data": sens_data}
+    return {
+        "Q_grid":    Q_grid,
+        "F_min":     F_min,
+        "F_max":     F_max,
+        "sens_data": sens_data,   # pooled, aligned samples from all epistemic cases
+    }
+
+    # return {"Q_grid": Q_grid, "F_min": F_min, "F_max": F_max, "sens_Q": sens_Q, "sens_data": sens_data}
+
+#COMPLETLEY NEW AND UNVERIFIED
+# ─── Global Sensitivity Analysis: scatter plots + Pearson + Spearman + SRRC ──
+def global_sensitivity_analysis(pbox_results):
+    """
+    Global SA on pooled aleatory samples from the P-box run.
+
+    Three complementary metrics:
+      • Pearson r        – linear correlation
+      • Spearman ρ       – monotone (rank) correlation, no linearity assumption
+      • SRRC             – Standardized Rank Regression Coefficient
+                           (fraction of rank-variance explained by each input)
+
+    Scatter plots follow Oberkampf & Roy §13 convention:
+      one panel per input parameter, Qc on the y-axis.
+    """
+    from scipy.stats import spearmanr, pearsonr
+    from scipy.stats import rankdata
+    
+    sens_data = pbox_results["sens_data"]
+    Q         = sens_data["Q"]
+    params    = ["C0", "u_max", "L", "H"]
+    labels    = {"C0": r"$C_0$", "u_max": r"$u_{\max}$",
+                 "L":  r"$L$",   "H":     r"$H$"}
+
+    # ── 1. Scatter plots ──────────────────────────────────────────────────────
+    fig, axes = plt.subplots(1, len(params), figsize=(14, 4), sharey=True)
+    fig.suptitle("Global SA – Scatter plots  ($Q_c$ vs each aleatory input)",
+                 fontsize=12, fontweight="bold")
+
+    pearson_r  = {}
+    spearman_r = {}
+    for ax, p in zip(axes, params):
+        x = sens_data[p]
+
+        r_p, _  = pearsonr(x, Q)
+        r_s, _  = spearmanr(x, Q)
+        pearson_r[p]  = r_p
+        spearman_r[p] = r_s
+
+        ax.scatter(x, Q, s=10, alpha=0.35, color="steelblue", rasterized=True)
+
+        # linear trend line (visual guide)
+        m, b   = np.polyfit(x, Q, 1)
+        x_line = np.linspace(x.min(), x.max(), 100)
+        ax.plot(x_line, m*x_line + b, color="crimson", lw=1.5, label="linear fit")
+
+        ax.set_xlabel(labels[p], fontsize=11)
+        ax.set_title(f"r={r_p:+.3f}\nρ={r_s:+.3f}", fontsize=9)
+        ax.grid(alpha=0.25)
+
+    axes[0].set_ylabel("$Q_c$  (mol/m²)", fontsize=11)
+    plt.tight_layout()
+    plt.show()
+
+   # ── 2. SRRC via rank regression ───────────────────────────────────────────
+    # Rank-transform all variables then run OLS; β_i are the SRRCs.
+    from numpy.linalg import lstsq
+
+    X_rank = np.column_stack([rankdata(sens_data[p]) for p in params])
+    Q_rank = rankdata(Q)
+
+    # standardise ranks → zero mean, unit std
+    X_std = (X_rank - X_rank.mean(0)) / X_rank.std(0)
+    Q_std = (Q_rank - Q_rank.mean()) / Q_rank.std()
+
+    coeffs, _, _, _ = lstsq(X_std, Q_std, rcond=None)
+    SRRC = dict(zip(params, coeffs))
+
+    # coefficient of determination R² of the rank regression
+    Q_pred = X_std @ coeffs
+    SS_res = np.sum((Q_std - Q_pred)**2)
+    SS_tot = np.sum((Q_std - Q_std.mean())**2)
+    R2     = 1.0 - SS_res / SS_tot
+
+    # ── 3. Summary bar chart ──────────────────────────────────────────────────
+    x_pos   = np.arange(len(params))
+    width   = 0.25
+    r_p_arr = [pearson_r[p]  for p in params]
+    r_s_arr = [spearman_r[p] for p in params]
+    srrc_arr= [SRRC[p]       for p in params]
+    
+    fig, ax = plt.subplots(figsize=(8, 4))
+    ax.bar(x_pos - width, r_p_arr,  width, label="Pearson r",   color="steelblue",  alpha=0.85)
+    ax.bar(x_pos,         r_s_arr,  width, label="Spearman ρ",  color="darkorange",  alpha=0.85)
+    ax.bar(x_pos + width, srrc_arr, width, label=f"SRRC  (R²={R2:.3f})", color="seagreen", alpha=0.85)
+    ax.axhline(0, color="black", lw=0.8)
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels([labels[p] for p in params], fontsize=11)
+    ax.set_ylabel("Sensitivity coefficient")
+    ax.set_title("Global Sensitivity Analysis – Pearson / Spearman / SRRC")
+    ax.legend()
+    ax.grid(axis="y", alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+    # ── 4. Console summary ────────────────────────────────────────────────────
+    print("\n─── Global Sensitivity Analysis ───")
+    print(f"{'Param':<8}  {'Pearson r':>10}  {'Spearman ρ':>10}  {'SRRC':>8}")
+    print("─" * 44)
+    for p in params:
+        print(f"{p:<8}  {pearson_r[p]:>+10.4f}  {spearman_r[p]:>+10.4f}  {SRRC[p]:>+8.4f}")
+    print(f"\nRank-regression R² = {R2:.4f}  "
+          f"({'good' if R2 > 0.8 else 'moderate – possible nonlinearity'} fit)")
+
+    return {"pearson": pearson_r, "spearman": spearman_r, "SRRC": SRRC, "R2": R2}    
 
 #Validation
 def Q_c_empirique(prm):
