@@ -21,7 +21,7 @@ class parametres():
     H = 10      #[m]
     P = 1      #[m]
     Pe = 50
-    Da = 0.5
+    Da = 5
 prm = parametres()
 
 def concentration(nx, ny, prm, ordre = 2, mms = False):
@@ -300,7 +300,7 @@ def ordre_iteratif(f1, f2, f3, r, p0=2, tol=1e-6, max_iter=50):
     return p  # si pas convergé
 
 #Propagation des incertitudes
-def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True, plot_cdf=True):
+#def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True, plot_cdf=True):
     """
     Monte-Carlo propagation pour évaluer l'incertitude sur la quantité totale de matière adsorbée Qc
     Paramètres d'entrée:

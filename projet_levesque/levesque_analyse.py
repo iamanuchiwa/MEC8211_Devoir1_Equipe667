@@ -22,7 +22,7 @@ except:
 #     Da = 50
 # prm = parametres()
 
-analyses = "5"
+analyses = "4"
 
 """
 1 - Profil de température
@@ -96,32 +96,45 @@ if "3" in analyses:
 
 # GCI
 if "4" in analyses:
-    nx = [657, 219, 73]
+    nx = [451, 151, 51]
+    ny = [451, 151, 51]
     r = 3
     p_f = 2
-    Q = []
+    Qx = []
+    Qy = []
 
     for n in nx:
-        Q_i = Q_c_simpson(n, n, prm, 2)
-        Q.append(Q_i)
+        Q_i = Q_c_simpson(n, ny[0], prm, 2)
+        Qx.append(Q_i)
+        Q_i = Q_c_simpson(nx[0], n, prm, 2)
+        Qy.append(Q_i)
 
-    ordre_obs = np.log(abs((Q[2] - Q[1])/(Q[1] - Q[0]))) / np.log(r)
-    # ordre corrigé itératif
-    p = ordre_iteratif(Q[0], Q[1], Q[2], r, p0=ordre_obs)
+    ordre_obs_x = np.log(abs((Qx[2] - Qx[1])/(Qx[1] - Qx[0]))) / np.log(r)
+    ordre_obs_y = np.log(abs((Qy[2] - Qy[1])/(Qy[1] - Qy[0]))) / np.log(r)
 
-    print("Ordre observé (brut): ", ordre_obs)
-    print("Ordre corrigé (itératif): ", p)
+    print("Ordre observé (x): ", ordre_obs_x)
+    print("Ordre observé (y): ", ordre_obs_y)
 
-    if abs((ordre_obs - p_f)/p_f) > 0.1:
-        p = min(max(0.5, ordre_obs), p_f)
-        f_s = 3
-    else:
-        p = p_f
-        f_s = 1.25
+    ordres = [ordre_obs_x, ordre_obs_y]
+    p_list = []
+    fs_list = []
 
-    print("Fs: ", f_s)
-    gci = f_s*abs(Q[1] - Q[0])/(r**p - 1)
-    print("GCI: ", gci)
+    for ordre_obs in ordres:
+        if abs((ordre_obs - p_f)/p_f) > 0.1:
+            p = min(max(0.5, ordre_obs), p_f)
+            f_s = 3
+        else:
+            p = p_f
+            f_s = 1.25
+        
+        p_list.append(p)
+        fs_list.append(f_s)
+    
+    gci_x = fs_list[0]*abs(Qx[1] - Qx[0])/(r**p_list[0] - 1)
+    gci_y = fs_list[1]*abs(Qy[1] - Qy[0])/(r**p_list[1] - 1)
+
+    print("GCI (x): ", gci_x)
+    print("GCI (y): ", gci_y)
 
 
 #Propagation des incertitudes
