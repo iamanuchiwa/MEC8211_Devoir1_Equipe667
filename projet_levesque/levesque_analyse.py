@@ -96,45 +96,29 @@ if "3" in analyses:
 
 # GCI
 if "4" in analyses:
-    nx = [451, 151, 51]
-    ny = [451, 151, 51]
+    nx = [487, 163, 55]
     r = 3
     p_f = 2
-    Qx = []
-    Qy = []
+    Q = []
 
     for n in nx:
-        Q_i = Q_c_simpson(n, ny[0], prm, 2)
-        Qx.append(Q_i)
-        Q_i = Q_c_simpson(nx[0], n, prm, 2)
-        Qy.append(Q_i)
+        Q_i = Q_c_simpson(n, n, prm, 2)
+        Q.append(Q_i)
+  
+    ordre_obs = np.log(abs((Q[2] - Q[1])/(Q[1] - Q[0]))) / np.log(r)
 
-    ordre_obs_x = np.log(abs((Qx[2] - Qx[1])/(Qx[1] - Qx[0]))) / np.log(r)
-    ordre_obs_y = np.log(abs((Qy[2] - Qy[1])/(Qy[1] - Qy[0]))) / np.log(r)
+    print("Ordre observé: ", ordre_obs)
 
-    print("Ordre observé (x): ", ordre_obs_x)
-    print("Ordre observé (y): ", ordre_obs_y)
-
-    ordres = [ordre_obs_x, ordre_obs_y]
-    p_list = []
-    fs_list = []
-
-    for ordre_obs in ordres:
-        if abs((ordre_obs - p_f)/p_f) > 0.1:
-            p = min(max(0.5, ordre_obs), p_f)
-            f_s = 3
-        else:
-            p = p_f
-            f_s = 1.25
-        
-        p_list.append(p)
-        fs_list.append(f_s)
+    if abs((ordre_obs - p_f)/p_f) > 0.1:
+        p = min(max(0.5, ordre_obs), p_f)
+        f_s = 3
+    else:
+        p = p_f
+        f_s = 1.25
     
-    gci_x = fs_list[0]*abs(Qx[1] - Qx[0])/(r**p_list[0] - 1)
-    gci_y = fs_list[1]*abs(Qy[1] - Qy[0])/(r**p_list[1] - 1)
-
-    print("GCI (x): ", gci_x)
-    print("GCI (y): ", gci_y)
+    print(f_s)
+    gci = f_s*abs(Q[1] - Q[0])/(r**p - 1)
+    print("GCI global: ", gci)
 
 
 #Propagation des incertitudes
