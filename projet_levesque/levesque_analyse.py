@@ -22,7 +22,7 @@ except:
 #     Da = 50
 # prm = parametres()
 
-analyses = "4"
+analyses = "5"
 
 """
 1 - Profil de température
@@ -124,45 +124,86 @@ if "4" in analyses:
 #Propagation des incertitudes
 # Resultats Monte-Carlo et analyse de sensibilité globale
 if "5" in analyses:
-    # results = monte_carlo_Qc(prm, N=500, nx=129, ny=129)
-    # df = pd.DataFrame(results)
-    # corr = df.corr()["Q"].sort_values()
-    # print("\n----- GLOBAL SENSITIVITY (Pearson R) -----") #Need to verify this w. method etc.
-    # print(corr)
+    # start = timer()
+    # print("\n=== MODE 5: P-BOX computation ===")
+    # pbox_results = pbox(prm, N=200, nx=129, ny=129, seed=42)
+    # end = timer()
+    # print(f"Runtime p-box: {end - start:.2f} seconds")
+
+    # start = timer()
+    # print("\n=== GLOBAL SENSITIVITY ANALYSIS ===")
+    # sa = global_sensitivity_analysis(pbox_results)
+    # end = timer()
+    # print(f"Runtime Sensitivity analysis: {end - start:.2f} seconds")
+    from timeit import default_timer as timer
+
+    # === PARAMETERS ===
+    N = 500
+    nx = ny = 129
+    prm_base = prm
+
+    print("=== COMPARING MC AND LHS SAMPLING ===")
+
+    # -------------------------
+    # 1) INPUT PDFs & CDFs
+    # -------------------------
+    print("\n--- Sampling Inputs ---")
     start = timer()
-    print("\n=== MODE 5: P-BOX computation ===")
-    pbox_results = pbox(prm, N=200, nx=129, ny=129, seed=42)
-    end = timer()
-    print(f"Runtime p-box: {end - start:.2f} seconds")
+    C0_mc, u_mc, L_mc, H_mc = mc_sampling(N, prm_base, seed=1)
+    t_mc_inputs = timer() - start
 
     start = timer()
-    print("\n=== GLOBAL SENSITIVITY ANALYSIS ===")
-    sa = global_sensitivity_analysis(pbox_results)
-    end = timer()
-    print(f"Runtime Sensitivity analysis: {end - start:.2f} seconds")
-    # #Global sensitivity
-    # print("\n=== GLOBAL SENSITIVITY (Pearson) ===")
-    # sens_Q = pbox["sens_Q"]
-    # sens_data = pbox["sens_data"]
-    # df = pd.DataFrame({
-    #     "Q": sens_Q,
-    #     "C0": sens_data["C0"],
-    #     "u_max": sens_data["u_max"],
-    #     "L": sens_data["L"],
-    #     "H": sens_data["H"]
-    # })
+    C0_lhs, u_lhs, L_lhs, H_lhs = lhs_norm_uni(N, prm_base, seed=1)
+    t_lhs_inputs = timer() - start
+    print("MC C0 mean:", np.mean(C0_mc), "std:", np.std(C0_mc))
+    print("LHS C0 mean:", np.mean(C0_lhs), "std:", np.std(C0_lhs))
 
-    # corr = df.corr()["Q"].drop("Q").sort_values(key=abs, ascending=False)
-    # print(corr)
+    print(f"MC input sampling time:  {t_mc_inputs:.3f} s")
+    print(f"LHS input sampling time: {t_lhs_inputs:.3f} s")
 
-    # # Plot
-    # plt.figure(figsize=(7,5))
-    # corr.plot(kind="bar")
-    # plt.ylabel("Correlation with Qc")
-    # plt.title("Global Sensitivity (Pearson)")
-    # plt.grid(alpha=0.3)
-    # plt.tight_layout()
-    # plt.show()
+    # Plot PDFs/CDFs for each input
+    plot_pdf_cdf(C0_mc,  var_name="C0",    method="MC")
+    plot_pdf_cdf(C0_lhs, var_name="C0",    method="LHS")
+
+    plot_pdf_cdf(u_mc,   var_name="u_max", method="MC")
+    plot_pdf_cdf(u_lhs,  var_name="u_max", method="LHS")
+
+    plot_pdf_cdf(L_mc,   var_name="L",     method="MC")
+    plot_pdf_cdf(L_lhs,  var_name="L",     method="LHS")
+
+    plot_pdf_cdf(H_mc,   var_name="H",     method="MC")
+    plot_pdf_cdf(H_lhs,  var_name="H",     method="LHS")
+
+    # -------------------------
+    # 3) P-BOX (MC and LHS)
+    # -------------------------
+    print("\n=== P-BOX USING MC ===")
+    pbox_mc = pbox(prm_base, N=200, nx=nx, ny=ny, seed=10, method="MC")
+
+    print("\n=== P-BOX USING LHS ===")
+    pbox_lhs = pbox(prm_base, N=200, nx=nx, ny=ny, seed=10, method="LHS")
+
+
+    # -------------------------
+    # 4) GLOBAL SENSITIVITY
+    # -------------------------
+    print("\n=== GLOBAL SENSITIVITY (MC PBOX) ===")
+    sa_mc = global_sensitivity_analysis(pbox_mc)
+
+    print("\n=== GLOBAL SENSITIVITY (LHS PBOX) ===")
+    sa_lhs = global_sensitivity_analysis(pbox_lhs)
+
+    # print("\n=== MEAN / STD ===")
+    # mc_mean, mc_std = mc_stats(Q_mc)
+    # lhs_mean, lhs_std = mc_stats(Q_lhs)
+    # print(f"MC:  mean={mc_mean:.4e}, std={mc_std:.4e}")
+    # print(f"LHS: mean={lhs_mean:.4e}, std={lhs_std:.4e}")
+
+    # print("\n=== MOMENT METHOD (OPTIONAL) ===")
+    # mom_mean, mom_std, sens = moment_method_mean_std(prm_base, nx, ny)
+    # print(f"MoM mean={mom_mean:.4e}, std≈{mom_std:.4e}")
+    # print("Sensitivities:", sens)
+
 
 #Validation
 

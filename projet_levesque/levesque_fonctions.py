@@ -12,6 +12,7 @@ from scipy import sparse
 from scipy.sparse.linalg import spsolve
 from scipy.stats import norm, uniform
 from torch import seed
+import lhsmdu
 
 #from projet_levesque.levesque_analyse import parametres
 class parametres():
@@ -300,113 +301,6 @@ def ordre_iteratif(f1, f2, f3, r, p0=2, tol=1e-6, max_iter=50):
     return p  # si pas convergé
 
 #Propagation des incertitudes
-#def monte_carlo_Qc(prm_base, N=300, nx=129, ny=129, seed=42, plot_pdfs=True, plot_cdf=True):
-    """
-    Monte-Carlo propagation pour évaluer l'incertitude sur la quantité totale de matière adsorbée Qc
-    Paramètres d'entrée:
-    prm_base : parametres
-        Paramètre de base pour la simulation, contenant les valeurs moyennes des paramètres d'entrée.
-        Utilise prm dans analyse
-    N : int
-        Nr de simulations Monte-Carlo à effectuer.
-    nx, ny : int
-        resolution spatiale pour chaque pde
-    seed : int
-        Random seed
-    plot_pdfs : bool
-        Si True, affiche les PDF des paramètres d'entrée utilisés dans la simulation Monte-Carlo
-    plot_cdf : bool
-        Si True, affiche la CDF des paramètres d'entrée utilisés dans la simulation Monte-Carlo
-
-    retourns:
-    results : dict
-        archive des résultats de la simulation Monte-Carlo, contenant les valeurs de Qc et les échantillons des paramètres
-        d'entrée pour l'analyse de sensibilité.
-    """
-
-    np.random.seed(seed)
-
-    # Stockage des résultats
-    Q_vals = []
-    C0_vals = []
-    umax_vals = []
-    L_vals = []
-    H_vals = []
-    Pe_vals = []
-    Da_vals = []
-
-    for _ in range(N):
-
-        # parametres pour cette simulation Monte-Carlo
-        prm_m = parametres()
-
-        #  incertitudes aléatoires (gaussian)
-        prm_m.C0     = np.random.normal(prm_base.C0,   0.03 * prm_base.C0)      # ±3%
-        prm_m.u_max  = np.random.normal(prm_base.u_max,0.05 * prm_base.u_max)   # ±5%
-        prm_m.L      = np.random.normal(prm_base.L,    0.01 * prm_base.L)       # ±1%
-        prm_m.H      = np.random.normal(prm_base.H,    0.01 * prm_base.H)       # ±1%
-
-        #  incertitudes épistémiques (uniforme)
-        prm_m.Pe = np.random.uniform(0.9*prm_base.Pe, 1.1*prm_base.Pe)  # ±10% interval
-        prm_m.Da = np.random.uniform(0.9*prm_base.Da, 1.1*prm_base.Da)  # ±10% interval
-
-        #  Calcul de Qc pour cette simulation Monte-Carlo
-        Q_val = Q_c_simpson(nx, ny, prm_m, ordre=2, mms=False)
-        Q_vals.append(Q_val)
-
-        # Sauvegarde des échantillons de paramètres pour l'analyse de sensibilité
-        C0_vals.append(prm_m.C0)
-        umax_vals.append(prm_m.u_max)
-        L_vals.append(prm_m.L)
-        H_vals.append(prm_m.H)
-        Pe_vals.append(prm_m.Pe)
-        Da_vals.append(prm_m.Da)
-
-    Q_vals = np.array(Q_vals)
-    # Plot PDFs d'entrée
-    if plot_pdfs:
-        plot_input_pdfs(
-            C0_vals, prm_base.C0, 0.03*prm_base.C0,
-            umax_vals, prm_base.u_max, 0.05*prm_base.u_max,
-            L_vals, prm_base.L, 0.01*prm_base.L,
-            H_vals, prm_base.H, 0.01*prm_base.H,
-            Pe_vals, 0.9*prm_base.Pe, 1.1*prm_base.Pe,
-            Da_vals, 0.9*prm_base.Da, 1.1*prm_base.Da
-        )
-    # Plot CDFs d'entrée
-    if plot_cdf:
-        plot_input_cdfs(C0_vals, umax_vals, L_vals, H_vals, Pe_vals, Da_vals)
-
-    # présentation des résultats de la simulation Monte-Carlo
-    print("\n----- MONTE-CARLO RESULTS -----")
-    print(f"Mean Qc      : {Q_vals.mean():.6e}")
-    print(f"Std dev Qc   : {Q_vals.std():.6e}")
-    print(f"Rel. uncert. : {100*Q_vals.std()/Q_vals.mean():.2f} %")
-    print(f"95% CI       : [{np.percentile(Q_vals,2.5):.6e} ; {np.percentile(Q_vals,97.5):.6e}]")
-
-    # Plot CDF de Qc
-    sorted_Q = np.sort(Q_vals)
-    cdf = np.linspace(0, 1, N)
-
-    plt.figure(figsize=(8,5))
-    plt.plot(sorted_Q, cdf, lw=2)
-    plt.xlabel("Qc (mol/m²)")
-    plt.ylabel("CDF")
-    plt.grid(True, alpha=0.3)
-    plt.title("CDF of Qc from Monte-Carlo Propagation")
-    plt.tight_layout()
-    plt.show()
-
-    return {
-        "Q": Q_vals,
-        "C0": np.array(C0_vals),
-        "u_max": np.array(umax_vals),
-        "L": np.array(L_vals),
-        "H": np.array(H_vals),
-        "Pe": np.array(Pe_vals),
-        "Da": np.array(Da_vals)
-    }
-
 # Fonction pour générer un échantillonnage Latin Hypercube pour les paramètres aléatoires (C0, u_max, L, H) avec des distributions gaussiennes
 def lhs_norm_uni(N,prm_base, seed=42):
     """
@@ -415,11 +309,11 @@ def lhs_norm_uni(N,prm_base, seed=42):
     """
     np.random.seed(seed)
     d = 4  # nr. variables aléatoires (C0, u_max, L, H)
-    lhs = np.zeros((N, d))
-    
-    for j in range(d):
-        perm = np.random.permutation(N)
-        lhs[:, j] = (perm + np.random.rand(N)) / N
+    lhs = np.array(lhsmdu.sample(N, d, randomSeed=seed)).T
+    # if lhs.shape[0] == 4:
+    #     lhs = lhs.T
+    eps = 1e-12
+    lhs = np.clip(lhs, eps, 1 - eps)
         
     # Transformation inverse pour les distributions gaussiennes
 
@@ -436,134 +330,118 @@ def lhs_norm_uni(N,prm_base, seed=42):
     
     return C0_lhs, u_max_lhs, L_lhs, H_lhs
 
-# def plot_input_pdfs(C0_samples, C0_mu, C0_sigma, umax_samples, umax_mu, umax_sigma, L_samples, L_mu, L_sigma, H_samples, H_mu, H_sigma, Pe_samples, Pe_min, Pe_max, Da_samples, Da_min, Da_max):
-    #Plot pdfs des entrées (gaussian pour les paramètres aléatoires et uniforme pour les paramètres épistémiques)
-    #Utilisé dans Monte-Carlo pour visualiser les distributions d'entrée
+def mc_sampling(N, prm_base, seed=42):
+    '''
+    Génère un échantillonnage Monte-Carlo pour les paramètres aléatoires 
+    (C0, u_max, L, H) avec des distributions gaussiennes.'
+        C0 +/- 3%,
+        u_max +/- 5%,
+        L +/- 1%,
+        H +/- 1%
+    '''
+    rng = np.random.default_rng(seed)
 
-    fig, axs = plt.subplots(3, 2, figsize=(12, 12))
-    axs = axs.flatten()
+    C0 = rng.normal(prm_base.C0,    0.03 * prm_base.C0,    size=N)
+    u  = rng.normal(prm_base.u_max, 0.05 * prm_base.u_max, size=N)
+    L  = rng.normal(prm_base.L,     0.01 * prm_base.L,     size=N)
+    H  = rng.normal(prm_base.H,     0.01 * prm_base.H,     size=N)
 
-    def plot_gaussian(ax, samples, mu, sigma, label):
-        x = np.linspace(mu - 4*sigma, mu + 4*sigma, 200)
-        ax.hist(samples, bins=20, density=True, alpha=0.5)
-        ax.plot(x, norm.pdf(x, mu, sigma), 'r', lw=2)
-        ax.set_title(label)
-        ax.grid(alpha=0.3)
+    return (
+        np.maximum(C0, 1e-12),
+        np.maximum(u,  1e-12),
+        np.maximum(L,  1e-12),
+        np.maximum(H,  1e-12),
+    )
 
-    def plot_uniform(ax, samples, a, b, label):
-        x = np.linspace(a, b, 200)
-        ax.hist(samples, bins=20, density=True, alpha=0.5)
-        ax.plot(x, uniform.pdf(x, a, b - a), 'r', lw=2)
-        ax.set_title(label)
-        ax.grid(alpha=0.3)
-
-    plot_gaussian(axs[0], C0_samples,    C0_mu,  C0_sigma,  "C0 (Gaussian)")
-    plot_gaussian(axs[1], umax_samples,  umax_mu,umax_sigma,"u_max (Gaussian)")
-    plot_gaussian(axs[2], L_samples,     L_mu,  L_sigma,   "L (Gaussian)")
-    plot_gaussian(axs[3], H_samples,     H_mu,  H_sigma,   "H (Gaussian)")
-    plot_uniform(axs[4], Pe_samples, Pe_min, Pe_max, "Pe (Uniform)")
-    plot_uniform(axs[5], Da_samples, Da_min, Da_max, "Da (Uniform)")
-
-    plt.tight_layout()
-    plt.show()
-
-# def plot_input_cdfs(C0_vals, umax_vals, L_vals, H_vals, Pe_vals, Da_vals):
-    fig, axs = plt.subplots(3, 2, figsize=(12, 12))
-    axs = axs.flatten()
-
-    def _plot(ax, samples, label):
-        samples = np.array(samples)
-        sorted_s = np.sort(samples)
-        cdf = np.linspace(0, 1, len(samples))
-        ax.plot(sorted_s, cdf, lw=2)
-        ax.set_title(label)
-        ax.set_xlabel(label)
-        ax.set_ylabel("CDF")
-        ax.grid(alpha=0.3)
-
-    _plot(axs[0], C0_vals, "C0")
-    _plot(axs[1], umax_vals, "u_max")
-    _plot(axs[2], L_vals, "L")
-    _plot(axs[3], H_vals, "H")
-    _plot(axs[4], Pe_vals, "Pe")
-    _plot(axs[5], Da_vals, "Da")
-
-    plt.tight_layout()
-    plt.show()
-
-def int_aleatory_MC_ep_fix(prm_fixed, N, nx, ny, seed):
+def int_aleatory_ep_fix(prm_fixed, N, nx, ny, seed = 42, method = "MC"):
     """
     Monte-Carlo aléatoire pour des paramètres épistémiques fixés (Pe, Da).
     Retourne les valeurs de Q triées et la grille de CDF correspondante.
-    Paramètres de LHS pour les paramètres aléatoires (C0, u_max, L, H) avec des distributions gaussiennes.
+    Paramètres de LHS ou MC selon le paramètre 'method' pour les paramètres aléatoires (C0, u_max, L, H) avec des distributions gaussiennes.
     """
-    C0_lhs, u_max_lhs, L_lhs, H_lhs = lhs_norm_uni(N, prm_fixed, seed)
+    # --- choose aleatory sampling ---
+    if method.upper() == "MC":
+        C0_vals, umax_vals, L_vals, H_vals = mc_sampling(N, prm_fixed, seed)
 
-    np.random.seed(seed)
-    Q_vals = []
-    C0_vals = []
-    umax_vals = []
-    L_vals = []
-    H_vals = []
-
+    elif method.upper() == "LHS":
+        C0_vals, umax_vals, L_vals, H_vals = lhs_norm_uni(N, prm_fixed, seed)
+        # --- evaluate Qc for each sample ---
+    Q = np.zeros(N)
     for i in range(N):
+        prm_i = parametres()
+        prm_i.Pe     = prm_fixed.Pe
+        prm_i.Da     = prm_fixed.Da
+        prm_i.C0     = C0_vals[i]
+        prm_i.u_max  = umax_vals[i]
+        prm_i.L      = L_vals[i]
+        prm_i.H      = H_vals[i]
 
-        prm_m = parametres()
+        Q[i] = Q_c_simpson(nx, ny, prm_i, ordre=2, mms=False)
 
-        # epistemic - paramètres fixés
-        prm_m.Pe = prm_fixed.Pe
-        prm_m.Da = prm_fixed.Da
+    # CDF components
+    Q_sorted = np.sort(Q)
+    CDF = np.linspace(1/N, 1, N)
 
-        # # aléatoire: Gaussian
-        # prm_m.C0     = np.random.normal(prm_fixed.C0,   0.03 * prm_fixed.C0)
-        # prm_m.u_max  = np.random.normal(prm_fixed.u_max,0.05 * prm_fixed.u_max)
-        # prm_m.L      = np.random.normal(prm_fixed.L,    0.01 * prm_fixed.L)
-        # prm_m.H      = np.random.normal(prm_fixed.H,    0.01 * prm_fixed.H)
-
-        # Aleatory (LHS)
-        prm_m.C0 = C0_lhs[i]
-        prm_m.u_max = u_max_lhs[i]
-        prm_m.L = L_lhs[i]
-        prm_m.H = H_lhs[i]
-
-        q = Q_c_simpson(nx, ny, prm_m, ordre=2, mms=False) #NEW
-        Q_vals.append(q) #NEW
-        # évaluer Qc et stocker les résultats
-        C0_vals.append(prm_m.C0)
-        umax_vals.append(prm_m.u_max)
-        L_vals.append(prm_m.L)
-        H_vals.append(prm_m.H)
-        #Q_vals.append(Q_c_simpson(nx, ny, prm_m, ordre=2, mms=False)) IF NEW PART DOESN*T WORK, UNCOMMENT
-
-    #Q_vals = np.sort(np.array(Q_vals)) IF NEW PART DOESN*T WORK, UNCOMMENT
- 
-    # CDF = np.linspace(0, 1, len(Q_vals)) IF THE PART BELLLOW DOESN*T WORK; THIS IS FROM THE ORIGINAL!!
-    Q_arr    = np.array(Q_vals)          # ← UNSORTED: keeps alignment with samples
-    Q_sorted = np.sort(Q_arr)            #   sorted copy only for the CDF
-    CDF      = np.linspace(0, 1, N)
-
-    samples = {
-        "Q":     Q_arr,                  # aligned, unsorted
-        "C0":    np.array(C0_vals),
-        "u_max": np.array(umax_vals),
-        "L":     np.array(L_vals),
-        "H":     np.array(H_vals),
+    return Q_sorted, CDF, {
+        "Q": Q,
+        "C0": C0_vals,
+        "u_max": umax_vals,
+        "L": L_vals,
+        "H": H_vals,
     }
-    return Q_sorted, CDF, samples
 
-    ## IF THE PART BELLLOW DOESN*T WORK; THIS IS FROM THE ORIGINAL!!
-    # return Q_vals, CDF, {
-    # "C0": np.array(C0_vals),
-    # "u_max": np.array(umax_vals),
-    # "L": np.array(L_vals), 
-    # "H": np.array(H_vals)
-    # }, 
+    # np.random.seed(seed)
+    # Q_vals = []
+    # C0_vals = []
+    # umax_vals = []
+    # L_vals = []
+    # H_vals = []
 
-def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
+    # for i in range(N):
+
+    #     prm_m = parametres()
+
+    #     # epistemic - paramètres fixés
+    #     prm_m.Pe = prm_fixed.Pe
+    #     prm_m.Da = prm_fixed.Da
+
+    #     # Aleatory (LHS)
+    #     prm_m.C0 = C0_lhs[i]
+    #     prm_m.u_max = u_max_lhs[i]
+    #     prm_m.L = L_lhs[i]
+    #     prm_m.H = H_lhs[i]
+
+    #     q = Q_c_simpson(nx, ny, prm_m, ordre=2, mms=False) #NEW
+    #     Q_vals.append(q) #NEW
+    #     # évaluer Qc et stocker les résultats
+    #     C0_vals.append(prm_m.C0)
+    #     umax_vals.append(prm_m.u_max)
+    #     L_vals.append(prm_m.L)
+    #     H_vals.append(prm_m.H)
+    #     #Q_vals.append(Q_c_simpson(nx, ny, prm_m, ordre=2, mms=False)) IF NEW PART DOESN*T WORK, UNCOMMENT
+
+    # #Q_vals = np.sort(np.array(Q_vals)) IF NEW PART DOESN*T WORK, UNCOMMENT
+ 
+    # # CDF = np.linspace(0, 1, len(Q_vals)) IF THE PART BELLLOW DOESN*T WORK; THIS IS FROM THE ORIGINAL!!
+    # Q_arr    = np.array(Q_vals)          # ← UNSORTED: keeps alignment with samples
+    # Q_sorted = np.sort(Q_arr)            #   sorted copy only for the CDF
+    # CDF      = np.linspace(0, 1, N)
+
+    # samples = {
+    #     "Q":     Q_arr,                  # aligned, unsorted
+    #     "C0":    np.array(C0_vals),
+    #     "u_max": np.array(umax_vals),
+    #     "L":     np.array(L_vals),
+    #     "H":     np.array(H_vals),
+    # }
+    # return Q_sorted, CDF, samples
+
+def pbox(prm_base, N=200, nx=129, ny=129, seed=42, method="MC"):
     """
     Calculations de l'enveloppe des CDFs de Qc pour les différentes combinaisons extrêmes de Pe et Da, en utilisant Monte-Carlo pour les paramètres aléatoires.
     Epistemic: Pe, Da (intervals)
     Aleatoire: C0, u_max, L, H (Gaussian)
+    Method supporté: "MC" ou "LHS" pour les paramètres aléatoires. Par défaut "MC".
     """
 
     # epistemic bounds - pm 10%
@@ -581,29 +459,7 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
     all_F = []
     pooled = {k: [] for k in ("Q", "C0", "u_max", "L", "H")}  # NEW pour stocker tous les échantillons aléatoires de tous les cas épistémiques
 
-    # #COMMENTED AND REPLACED WITH OTHER FOR LOOP, IF IT DOESN'T WORK, LOOK AT THIS
-    # #for label, Pe_val, Da_val in epistemic_cases:
-    # for i, (label, Pe_val, Da_val) in enumerate(epistemic_cases):
-    #     print(f"\n=== Epistemic case: {label} ===")
-
-    #     prm_fixed = parametres()
-    #     prm_fixed.C0    = prm_base.C0
-    #     prm_fixed.u_max = prm_base.u_max
-    #     prm_fixed.L     = prm_base.L
-    #     prm_fixed.H     = prm_base.H
-    #     prm_fixed.Pe    = Pe_val
-    #     prm_fixed.Da    = Da_val
-
-    #     Q_vals, F_vals, samples = int_aleatory_MC_ep_fix(
-    #         prm_fixed, N, nx, ny, seed
-    #     )
-
-    #     all_Q.append(Q_vals)
-    #     all_F.append(F_vals)
-    #     if i == 0:
-    #         sens_data = samples
-    #         sens_Q = Q_vals
-    for label, Pe_val, Da_val in epistemic_cases:
+    for i, (label, Pe_val, Da_val) in enumerate(epistemic_cases):
         print(f"\n=== Epistemic case: {label} ===")
 
         prm_fixed        = parametres()
@@ -614,11 +470,9 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
         prm_fixed.Pe     = Pe_val
         prm_fixed.Da     = Da_val
 
-        Q_sorted, F_vals, samples = int_aleatory_MC_ep_fix(
-            prm_fixed, N, nx, ny, seed
-        )
-        all_Q_sorted.append(Q_sorted)
-        all_F.append(F_vals)
+        Qs, Fs, samples = int_aleatory_ep_fix(prm_fixed, N, nx, ny, seed + i, method=method)
+        all_Q_sorted.append(Qs)
+        all_F.append(Fs)
 
         for k in pooled:               # pool aligned samples for global SA
             pooled[k].append(samples[k])
@@ -640,24 +494,6 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
         F_min = np.minimum(F_min, F_interp)
         F_max = np.maximum(F_max, F_interp)
 
-    # if len(all_Q) == 1:  # first case only for sensitivity analysis
-    #     sens_data = samples
-    #     sens_Q = Q_vals
-
-    # # Prev. plotting
-    # # --- Plot
-    # plt.figure(figsize=(8,5))
-    # plt.fill_between(Q_grid, F_min, F_max, color='lightgray', label="P-box")
-    # plt.plot(Q_grid, F_min, lw=2, label="F_min", color='green')
-    # plt.plot(Q_grid, F_max, lw=2, label="F_max", color='red')
-    # plt.xlabel("Qc (mol/m²)")
-    # plt.ylabel("CDF")
-    # plt.grid(alpha=0.3)
-    # plt.title("P-box of Qc (epistemic + aleatory)")
-    # plt.legend()
-    # plt.tight_layout()
-    # plt.show()
-
     # P-box plot
     plt.figure(figsize=(8, 5))
     plt.fill_between(Q_grid, F_min, F_max, color="lightgray", label="P-box")
@@ -678,112 +514,132 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42):
         "sens_data": sens_data,   # pooled, aligned samples from all epistemic cases
     }
 
-    # return {"Q_grid": Q_grid, "F_min": F_min, "F_max": F_max, "sens_Q": sens_Q, "sens_data": sens_data}
+def plot_pdf_cdf(vals, var_name="Variable", method="", bins=30):
+    """
+    Plot PDF and CDF for any input variable.
+    
+    Parameters
+    ----------
+    vals : array-like
+        Values to plot
+    var_name : str
+        Name of the variable (C0, u_max, L, H, Qc, etc.)
+    method : str
+        Sampling method label ("MC", "LHS", etc.)
+    """
+    data = np.array(vals)
+
+    fig, ax = plt.subplots(1, 2, figsize=(10, 4))
+
+    # PDF
+    ax[0].hist(data, bins=bins, density=True, color="steelblue", alpha=0.7)
+    ax[0].set_title(f"PDF of {var_name} ({method})")
+    ax[0].set_xlabel(var_name)
+    ax[0].set_ylabel("PDF")
+    ax[0].grid(alpha=0.3)
+
+    # CDF
+    data_sorted = np.sort(data)
+    F = np.linspace(0, 1, len(data_sorted))
+
+    ax[1].plot(data_sorted, F, lw=2, color="darkorange")
+    ax[1].set_title(f"CDF of {var_name} ({method})")
+    ax[1].set_xlabel(var_name)
+    ax[1].set_ylabel("CDF")
+    ax[1].grid(alpha=0.3)
+
+    plt.tight_layout()
+    plt.show(block=False)
 
 #COMPLETLEY NEW AND UNVERIFIED
-# ─── Global Sensitivity Analysis: scatter plots + Pearson + Spearman + SRRC ──
+# Global Sensitivity Analysis:
 def global_sensitivity_analysis(pbox_results):
     """
-    Global SA on pooled aleatory samples from the P-box run.
+    MEC8211-compatible Global Sensitivity Analysis
+    ---------------------------------------------------
+    Methods used:
+        - Spearman rank correlation  (Oberkampf & Roy)
+        - SRC : Standardized Regression Coefficients
+        - SRRC: Standardized Rank Regression Coefficients (rank-based SRC)
 
-    Three complementary metrics:
-      • Pearson r        – linear correlation
-      • Spearman ρ       – monotone (rank) correlation, no linearity assumption
-      • SRRC             – Standardized Rank Regression Coefficient
-                           (fraction of rank-variance explained by each input)
-
-    Scatter plots follow Oberkampf & Roy §13 convention:
-      one panel per input parameter, Qc on the y-axis.
+    Inputs
+        pbox_results["sens_data"] : pooled aleatory samples across epistemic cases
     """
-    from scipy.stats import spearmanr, pearsonr
-    from scipy.stats import rankdata
-    
+
+    from scipy.stats import spearmanr, rankdata
+    from numpy.linalg import lstsq
+
     sens_data = pbox_results["sens_data"]
-    Q         = sens_data["Q"]
-    params    = ["C0", "u_max", "L", "H"]
-    labels    = {"C0": r"$C_0$", "u_max": r"$u_{\max}$",
-                 "L":  r"$L$",   "H":     r"$H$"}
+    Q = sens_data["Q"]
+    params = ["C0", "u_max", "L", "H"]
+    labels = {"C0": r"$C_0$", "u_max": r"$u_{\max}$", "L": r"$L$", "H": r"$H$"}
 
-    # ── 1. Scatter plots ──────────────────────────────────────────────────────
-    fig, axes = plt.subplots(1, len(params), figsize=(14, 4), sharey=True)
-    fig.suptitle("Global SA – Scatter plots  ($Q_c$ vs each aleatory input)",
-                 fontsize=12, fontweight="bold")
-
-    pearson_r  = {}
+    # Spearman rank correlations
     spearman_r = {}
+    for p in params:
+        rho, _ = spearmanr(sens_data[p], Q)
+        spearman_r[p] = rho
+
+    # SRC
+    X = np.column_stack([sens_data[p] for p in params])
+    X_std = (X - X.mean(0)) / X.std(0)
+    Q_std = (Q - Q.mean()) / Q.std()
+
+    beta_SRC, _, _, _ = lstsq(X_std, Q_std, rcond=None)
+    SRC = dict(zip(params, beta_SRC))
+
+    # SRRC (rank-based SRC)
+    Xr = np.column_stack([rankdata(sens_data[p]) for p in params])
+    Xr_std = (Xr - Xr.mean(0)) / Xr.std(0)
+    Qr_std = (rankdata(Q) - np.mean(rankdata(Q))) / np.std(rankdata(Q))
+
+    beta_SRRC, _, _, _ = lstsq(Xr_std, Qr_std, rcond=None)
+    SRRC = dict(zip(params, beta_SRRC))
+
+    # Plots
+    fig, axes = plt.subplots(1, len(params), figsize=(14, 4), sharey=True)
+    fig.suptitle("Global SA — Spearman + SRC + SRRC", fontsize=12, fontweight="bold")
+
     for ax, p in zip(axes, params):
-        x = sens_data[p]
-
-        r_p, _  = pearsonr(x, Q)
-        r_s, _  = spearmanr(x, Q)
-        pearson_r[p]  = r_p
-        spearman_r[p] = r_s
-
-        ax.scatter(x, Q, s=10, alpha=0.35, color="steelblue", rasterized=True)
-
-        # linear trend line (visual guide)
-        m, b   = np.polyfit(x, Q, 1)
-        x_line = np.linspace(x.min(), x.max(), 100)
-        ax.plot(x_line, m*x_line + b, color="crimson", lw=1.5, label="linear fit")
-
+        ax.scatter(sens_data[p], Q, s=10, alpha=0.35, color="steelblue")
         ax.set_xlabel(labels[p], fontsize=11)
-        ax.set_title(f"r={r_p:+.3f}\nρ={r_s:+.3f}", fontsize=9)
-        ax.grid(alpha=0.25)
+        ax.set_title(f"$\\rho$={spearman_r[p]:+.3f}\nSRC={SRC[p]:+.3f}", fontsize=9)
+        ax.grid(alpha=0.3)
+    axes[0].set_ylabel("$Q_c$  (mol/m²)")
 
-    axes[0].set_ylabel("$Q_c$  (mol/m²)", fontsize=11)
     plt.tight_layout()
     plt.show()
 
-   # ── 2. SRRC via rank regression ───────────────────────────────────────────
-    # Rank-transform all variables then run OLS; β_i are the SRRCs.
-    from numpy.linalg import lstsq
+    # ───────────── Summary bar chart ─────────────
+    width = 0.25
+    x_pos = np.arange(len(params))
 
-    X_rank = np.column_stack([rankdata(sens_data[p]) for p in params])
-    Q_rank = rankdata(Q)
-
-    # standardise ranks → zero mean, unit std
-    X_std = (X_rank - X_rank.mean(0)) / X_rank.std(0)
-    Q_std = (Q_rank - Q_rank.mean()) / Q_rank.std()
-
-    coeffs, _, _, _ = lstsq(X_std, Q_std, rcond=None)
-    SRRC = dict(zip(params, coeffs))
-
-    # coefficient of determination R² of the rank regression
-    Q_pred = X_std @ coeffs
-    SS_res = np.sum((Q_std - Q_pred)**2)
-    SS_tot = np.sum((Q_std - Q_std.mean())**2)
-    R2     = 1.0 - SS_res / SS_tot
-
-    # ── 3. Summary bar chart ──────────────────────────────────────────────────
-    x_pos   = np.arange(len(params))
-    width   = 0.25
-    r_p_arr = [pearson_r[p]  for p in params]
-    r_s_arr = [spearman_r[p] for p in params]
-    srrc_arr= [SRRC[p]       for p in params]
-    
     fig, ax = plt.subplots(figsize=(8, 4))
-    ax.bar(x_pos - width, r_p_arr,  width, label="Pearson r",   color="steelblue",  alpha=0.85)
-    ax.bar(x_pos,         r_s_arr,  width, label="Spearman ρ",  color="darkorange",  alpha=0.85)
-    ax.bar(x_pos + width, srrc_arr, width, label=f"SRRC  (R²={R2:.3f})", color="seagreen", alpha=0.85)
+    ax.bar(x_pos - width, [spearman_r[p] for p in params],
+           width, label="Spearman ρ", color="darkorange", alpha=0.85)
+    ax.bar(x_pos, [SRC[p] for p in params],
+           width, label="SRC", color="steelblue", alpha=0.85)
+    ax.bar(x_pos + width, [SRRC[p] for p in params],
+           width, label="SRRC", color="seagreen", alpha=0.85)
+
     ax.axhline(0, color="black", lw=0.8)
     ax.set_xticks(x_pos)
     ax.set_xticklabels([labels[p] for p in params], fontsize=11)
     ax.set_ylabel("Sensitivity coefficient")
-    ax.set_title("Global Sensitivity Analysis – Pearson / Spearman / SRRC")
+    ax.set_title("Global Sensitivity Analysis")
     ax.legend()
     ax.grid(axis="y", alpha=0.3)
     plt.tight_layout()
     plt.show()
-    # ── 4. Console summary ────────────────────────────────────────────────────
-    print("\n─── Global Sensitivity Analysis ───")
-    print(f"{'Param':<8}  {'Pearson r':>10}  {'Spearman ρ':>10}  {'SRRC':>8}")
-    print("─" * 44)
-    for p in params:
-        print(f"{p:<8}  {pearson_r[p]:>+10.4f}  {spearman_r[p]:>+10.4f}  {SRRC[p]:>+8.4f}")
-    print(f"\nRank-regression R² = {R2:.4f}  "
-          f"({'good' if R2 > 0.8 else 'moderate – possible nonlinearity'} fit)")
 
-    return {"pearson": pearson_r, "spearman": spearman_r, "SRRC": SRRC, "R2": R2}    
+    # ───────────── Console output ─────────────
+    print("\n─── Global Sensitivity Analysis (MEC8211) ───")
+    print(f"{'Param':<8} {'Spearman':>10}  {'SRC':>10}  {'SRRC':>10}")
+    print("-" * 50)
+    for p in params:
+        print(f"{p:<8} {spearman_r[p]:>+10.4f}  {SRC[p]:>+10.4f}  {SRRC[p]:>+10.4f}")
+
+    return {"spearman": spearman_r, "SRC": SRC, "SRRC": SRRC} 
 
 #Validation
 def Q_c_empirique(prm):
