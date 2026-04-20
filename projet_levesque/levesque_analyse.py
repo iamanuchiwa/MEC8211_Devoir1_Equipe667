@@ -113,17 +113,6 @@ if "4" in analyses:
 #Propagation des incertitudes
 # Resultats Monte-Carlo et analyse de sensibilité globale
 if "5" in analyses:
-    # start = timer()
-    # print("\n=== MODE 5: P-BOX computation ===")
-    # pbox_results = pbox(prm, N=200, nx=129, ny=129, seed=42)
-    # end = timer()
-    # print(f"Runtime p-box: {end - start:.2f} seconds")
-
-    # start = timer()
-    # print("\n=== GLOBAL SENSITIVITY ANALYSIS ===")
-    # sa = global_sensitivity_analysis(pbox_results)
-    # end = timer()
-    # print(f"Runtime Sensitivity analysis: {end - start:.2f} seconds")
     from timeit import default_timer as timer
 
     # === PARAMETERS ===
