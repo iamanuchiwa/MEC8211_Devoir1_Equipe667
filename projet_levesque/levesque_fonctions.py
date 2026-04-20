@@ -389,61 +389,13 @@ def int_aleatory_ep_fix(prm_fixed, N, nx, ny, seed = 42, method = "MC"):
         "H": H_vals,
     }
 
-    # np.random.seed(seed)
-    # Q_vals = []
-    # C0_vals = []
-    # umax_vals = []
-    # L_vals = []
-    # H_vals = []
-
-    # for i in range(N):
-
-    #     prm_m = parametres()
-
-    #     # epistemic - paramètres fixés
-    #     prm_m.Pe = prm_fixed.Pe
-    #     prm_m.Da = prm_fixed.Da
-
-    #     # Aleatory (LHS)
-    #     prm_m.C0 = C0_lhs[i]
-    #     prm_m.u_max = u_max_lhs[i]
-    #     prm_m.L = L_lhs[i]
-    #     prm_m.H = H_lhs[i]
-
-    #     q = Q_c_simpson(nx, ny, prm_m, ordre=2, mms=False) #NEW
-    #     Q_vals.append(q) #NEW
-    #     # évaluer Qc et stocker les résultats
-    #     C0_vals.append(prm_m.C0)
-    #     umax_vals.append(prm_m.u_max)
-    #     L_vals.append(prm_m.L)
-    #     H_vals.append(prm_m.H)
-    #     #Q_vals.append(Q_c_simpson(nx, ny, prm_m, ordre=2, mms=False)) IF NEW PART DOESN*T WORK, UNCOMMENT
-
-    # #Q_vals = np.sort(np.array(Q_vals)) IF NEW PART DOESN*T WORK, UNCOMMENT
- 
-    # # CDF = np.linspace(0, 1, len(Q_vals)) IF THE PART BELLLOW DOESN*T WORK; THIS IS FROM THE ORIGINAL!!
-    # Q_arr    = np.array(Q_vals)          # ← UNSORTED: keeps alignment with samples
-    # Q_sorted = np.sort(Q_arr)            #   sorted copy only for the CDF
-    # CDF      = np.linspace(0, 1, N)
-
-    # samples = {
-    #     "Q":     Q_arr,                  # aligned, unsorted
-    #     "C0":    np.array(C0_vals),
-    #     "u_max": np.array(umax_vals),
-    #     "L":     np.array(L_vals),
-    #     "H":     np.array(H_vals),
-    # }
-    # return Q_sorted, CDF, samples
-
-def pbox(prm_base, N=200, nx=129, ny=129, seed=42, method="MC"):
+def pbox(prm_base, N=200, nx=129, ny=129, seed=42, method="MC", plot=False):
     """
-    Calculations de l'enveloppe des CDFs de Qc pour les différentes combinaisons extrêmes de Pe et Da, en utilisant Monte-Carlo pour les paramètres aléatoires.
+    Calculations de l'enveloppe des CDFs de Qc pour les différentes combinaisons extrêmes de Pe et Da.
     Epistemic: Pe, Da (intervals)
     Aleatoire: C0, u_max, L, H (Gaussian)
-    Method supporté: "MC" ou "LHS" pour les paramètres aléatoires. Par défaut "MC".
+    Method supporté: "MC" ou "LHS". Par défaut "MC".
     """
-
-    # epistemic bounds - pm 10%
     Pe_min, Pe_max = 0.9*prm_base.Pe, 1.1*prm_base.Pe
     Da_min, Da_max = 0.9*prm_base.Da, 1.1*prm_base.Da
 
@@ -454,9 +406,9 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42, method="MC"):
         ("Pe_max, Da_max", Pe_max, Da_max),
     ]
 
-    all_Q_sorted = []
-    all_F = []
-    pooled = {k: [] for k in ("Q", "C0", "u_max", "L", "H")}  # NEW pour stocker tous les échantillons aléatoires de tous les cas épistémiques
+    all_Q_sorted  = []
+    all_F         = []
+    per_case_data = []
 
     for i, (label, Pe_val, Da_val) in enumerate(epistemic_cases):
         print(f"\n=== Epistemic case: {label} ===")
@@ -473,44 +425,44 @@ def pbox(prm_base, N=200, nx=129, ny=129, seed=42, method="MC"):
         all_Q_sorted.append(Qs)
         all_F.append(Fs)
 
-        for k in pooled:               # pool aligned samples for global SA
-            pooled[k].append(samples[k])
+        per_case_data.append({          # FIX 1: moved inside the loop, after samples is defined
+            "label":   label,
+            "Pe":      Pe_val,
+            "Da":      Da_val,
+            "samples": samples,
+        })
+        # FIX 2: removed "for k in pooled" — pooled no longer exists
 
-    # convert pooled lists to arrays
-    sens_data = {k: np.concatenate(pooled[k]) for k in pooled}
-
-    # Q_grid commun pour l'interpolation des CDFs
-    Q_min = min(Q[0] for Q in all_Q_sorted)  ##prev. all_Q ,   min des premiers éléments (min de chaque CDF)
-    Q_max = max(Q[-1] for Q in all_Q_sorted) ##prev. all_Q ,   max des derniers éléments (max de chaque CDF)
+    Q_min  = min(Q[0]  for Q in all_Q_sorted)
+    Q_max  = max(Q[-1] for Q in all_Q_sorted)
     Q_grid = np.linspace(Q_min, Q_max, 400)
 
     F_min = np.ones_like(Q_grid)
     F_max = np.zeros_like(Q_grid)
 
-    # Construction de l'enveloppe des CDFs (P-box)
     for Q_vals, F_vals in zip(all_Q_sorted, all_F):
         F_interp = np.interp(Q_grid, Q_vals, F_vals)
-        F_min = np.minimum(F_min, F_interp)
-        F_max = np.maximum(F_max, F_interp)
+        F_min    = np.minimum(F_min, F_interp)
+        F_max    = np.maximum(F_max, F_interp)
 
-    # P-box plot
-    plt.figure(figsize=(8, 5))
-    plt.fill_between(Q_grid, F_min, F_max, color="lightgray", label="P-box")
-    plt.plot(Q_grid, F_min, lw=2, color="green", label="F_min")
-    plt.plot(Q_grid, F_max, lw=2, color="red",   label="F_max")
-    plt.xlabel("Qc (mol/m²)")
-    plt.ylabel("CDF")
-    plt.grid(alpha=0.3)
-    plt.title("P-box of Qc  (epistemic × aleatory uncertainty)")
-    plt.legend()
-    plt.tight_layout()
-    plt.show()
+    if plot:
+        plt.figure(figsize=(8, 5))
+        plt.fill_between(Q_grid, F_min, F_max, color="lightgray", label="P-box")
+        plt.plot(Q_grid, F_min, lw=2, color="green", label="F_min")
+        plt.plot(Q_grid, F_max, lw=2, color="red",   label="F_max")
+        plt.xlabel("Qc (mol/m²)")
+        plt.ylabel("CDF")
+        plt.grid(alpha=0.3)
+        plt.title(f"P-box of Qc ({method})")
+        plt.legend()
+        plt.tight_layout()
+        plt.show()
 
     return {
-        "Q_grid":    Q_grid,
-        "F_min":     F_min,
-        "F_max":     F_max,
-        "sens_data": sens_data,   # pooled, aligned samples from all epistemic cases
+        "Q_grid":        Q_grid,
+        "F_min":         F_min,
+        "F_max":         F_max,
+        "per_case_data": per_case_data,
     }
 
 def plot_pdf_cdf(vals, var_name="Variable", method="", bins=30):
@@ -550,95 +502,300 @@ def plot_pdf_cdf(vals, var_name="Variable", method="", bins=30):
     plt.tight_layout()
     plt.show(block=False)
 
-#COMPLETLEY NEW AND UNVERIFIED
-# Global Sensitivity Analysis:
 def global_sensitivity_analysis(pbox_results):
     """
-    MEC8211-compatible Global Sensitivity Analysis
-    ---------------------------------------------------
-    Methods used:
-        - Spearman rank correlation  (Oberkampf & Roy)
-        - SRC : Standardized Regression Coefficients
-        - SRRC: Standardized Rank Regression Coefficients (rank-based SRC)
+    Analyse de sensibilité globale (GSA) effectuée séparément pour chaque cas épistémique
+    (Pe et Da sont fixés à l'intérieur de chaque cas.)  
+    Utilise uniquement Spearman et SRRC  
+    (SRC écarté : le modèle est non linéaire.)
 
-    Inputs
-        pbox_results["sens_data"] : pooled aleatory samples across epistemic cases
+    Graphiques :
+    Nuages de points (Q vs chaque entrée) pour le cas épistémique nominal
+
+    Diagramme en barres Spearman — moyenne sur les cas + étendue épistémique en barres d'erreur
+
+    Diagramme en barres SRRC — moyenne sur les cas + étendue épistémique en barres d'erreur
+
+    Rank-R² par cas — vérification de complétude / indicateur d'interactions
+    
     """
-
     from scipy.stats import spearmanr, rankdata
     from numpy.linalg import lstsq
 
-    sens_data = pbox_results["sens_data"]
-    Q = sens_data["Q"]
-    params = ["C0", "u_max", "L", "H"]
-    labels = {"C0": r"$C_0$", "u_max": r"$u_{\max}$", "L": r"$L$", "H": r"$H$"}
+    per_case_data = pbox_results["per_case_data"]
+    params  = ["C0", "u_max", "L", "H"]
+    labels  = {"C0": r"$C_0$", "u_max": r"$u_{\max}$", "L": r"$L$", "H": r"$H$"}
+    n_cases = len(per_case_data)
 
-    # Spearman rank correlations
-    spearman_r = {}
-    for p in params:
-        rho, _ = spearmanr(sens_data[p], Q)
-        spearman_r[p] = rho
+    # 1. Analyse de sensibilité globale par cas épistémique
+    case_results = []
 
-    # SRC
-    X = np.column_stack([sens_data[p] for p in params])
-    X_std = (X - X.mean(0)) / X.std(0)
-    Q_std = (Q - Q.mean()) / Q.std()
+    print("\n─── Par-cas épistémiques (Spearman + SRRC) ───")
+    print(f"{'Case':<22} {'Param':<8} {'Spearman':>10}  {'SRRC':>10}  {'Rank-R²':>10}")
+    print("-" * 65)
 
-    beta_SRC, _, _, _ = lstsq(X_std, Q_std, rcond=None)
-    SRC = dict(zip(params, beta_SRC))
+    for case in per_case_data:
+        samples = case["samples"]
+        Q       = samples["Q"]
 
-    # SRRC (rank-based SRC)
-    Xr = np.column_stack([rankdata(sens_data[p]) for p in params])
-    Xr_std = (Xr - Xr.mean(0)) / Xr.std(0)
-    Qr_std = (rankdata(Q) - np.mean(rankdata(Q))) / np.std(rankdata(Q))
+        # Spearman
+        spearman_r = {p: spearmanr(samples[p], Q).statistic for p in params}
 
-    beta_SRRC, _, _, _ = lstsq(Xr_std, Qr_std, rcond=None)
-    SRRC = dict(zip(params, beta_SRRC))
+        # SRRC
+        Xr      = np.column_stack([rankdata(samples[p]) for p in params])
+        Xr_std  = (Xr - Xr.mean(0)) / Xr.std(0)
+        Qr      = rankdata(Q)
+        Qr_std  = (Qr - Qr.mean()) / Qr.std()
+        beta_SRRC, _, _, _ = lstsq(Xr_std, Qr_std, rcond=None)
+        SRRC    = dict(zip(params, beta_SRRC))
 
-    # Plots
+        # Completeness: sum of SRRC² ≈ rank-R²
+        rank_R2 = float(np.sum(beta_SRRC**2))
+
+        case_results.append({
+            "label":    case["label"],
+            "samples":  samples,
+            "spearman": spearman_r,
+            "SRRC":     SRRC,
+            "rank_R2":  rank_R2,
+        })
+
+        flag = "ok" if rank_R2 > 0.9 else ("mid" if rank_R2 > 0.7 else "bas")
+        for p in params:
+            print(f"{case['label']:<22} {p:<8} "
+                  f"{spearman_r[p]:>+10.4f}  "
+                  f"{SRRC[p]:>+10.4f}  "
+                  f"{rank_R2:>10.4f} {flag if p == params[0] else ''}")
+
+    # PLOT 1 — Scatter plots (nominal epistemic case)
+    nominal    = case_results[0]["samples"]
+    Q_nom      = nominal["Q"]
+    nom_res    = case_results[0]
+
     fig, axes = plt.subplots(1, len(params), figsize=(14, 4), sharey=True)
-    fig.suptitle("Global SA — Spearman + SRC + SRRC", fontsize=12, fontweight="bold")
+    fig.suptitle(
+        f"Scatter plots — epistemic case: {case_results[0]['label']}\n"
+        f"Rank-R² = {nom_res['rank_R2']:.3f}"
+        + (" intéraction négligeable"
+           if nom_res["rank_R2"] > 0.9
+           else ("interraction modérée" if nom_res["rank_R2"] > 0.7
+                 else "interraction forte — consider Sobol")),
+        fontsize=10, fontweight="bold"
+    )
 
     for ax, p in zip(axes, params):
-        ax.scatter(sens_data[p], Q, s=10, alpha=0.35, color="steelblue")
+        ax.scatter(nominal[p], Q_nom, s=10, alpha=0.35, color="steelblue")
         ax.set_xlabel(labels[p], fontsize=11)
-        ax.set_title(f"$\\rho$={spearman_r[p]:+.3f}\nSRC={SRC[p]:+.3f}", fontsize=9)
+        ax.set_title(
+            f"Spearman = {nom_res['spearman'][p]:+.3f}\n"
+            f"SRRC     = {nom_res['SRRC'][p]:+.3f}",
+            fontsize=9
+        )
         ax.grid(alpha=0.3)
-    axes[0].set_ylabel("$Q_c$  (mol/m²)")
 
+    axes[0].set_ylabel("$Q_c$  (mol/m²)")
     plt.tight_layout()
     plt.show()
 
-    # ───────────── Summary bar chart ─────────────
-    width = 0.25
+    # Spearman bar chart avec étendue épistémique
+    spearman_means  = [np.mean([r["spearman"][p] for r in case_results]) for p in params]
+    spearman_mins   = [np.min( [r["spearman"][p] for r in case_results]) for p in params]
+    spearman_maxs   = [np.max( [r["spearman"][p] for r in case_results]) for p in params]
+    spearman_lowers = [m - lo for m, lo in zip(spearman_means, spearman_mins)]
+    spearman_uppers = [hi - m  for m, hi in zip(spearman_means, spearman_maxs)]
+
     x_pos = np.arange(len(params))
 
-    fig, ax = plt.subplots(figsize=(8, 4))
-    ax.bar(x_pos - width, [spearman_r[p] for p in params],
-           width, label="Spearman ρ", color="darkorange", alpha=0.85)
-    ax.bar(x_pos, [SRC[p] for p in params],
-           width, label="SRC", color="steelblue", alpha=0.85)
-    ax.bar(x_pos + width, [SRRC[p] for p in params],
-           width, label="SRRC", color="seagreen", alpha=0.85)
+    fig, ax = plt.subplots(figsize=(7, 4))
+    bars = ax.bar(x_pos, spearman_means, color="darkorange", alpha=0.85,
+                  label="Moyenne sur l'ensemble des cas épistémiques")
+    ax.errorbar(x_pos, spearman_means,
+                yerr=[spearman_lowers, spearman_uppers],
+                fmt="none", color="black", capsize=6, linewidth=1.5,
+                label="Étendue couvrant l'ensemble des cas épistémiques")
+
+    # Annotate each bar with its mean value
+    for xi, m in zip(x_pos, spearman_means):
+        ax.text(xi, m + (0.01 if m >= 0 else -0.03),
+                f"{m:+.3f}", ha="center", va="bottom", fontsize=9)
 
     ax.axhline(0, color="black", lw=0.8)
     ax.set_xticks(x_pos)
     ax.set_xticklabels([labels[p] for p in params], fontsize=11)
-    ax.set_ylabel("Sensitivity coefficient")
-    ax.set_title("Global Sensitivity Analysis")
-    ax.legend()
+    ax.set_ylabel("Spearman ρ")
+    ax.set_title("Analyse de sensibilité globales — Spearman rank correlation\n"
+                 "(bars = moyenne, moustaches = l'étendue couvrant l'ensemble des cas épistémique)")
+    ax.legend(fontsize=9)
     ax.grid(axis="y", alpha=0.3)
     plt.tight_layout()
     plt.show()
 
-    # ───────────── Console output ─────────────
-    print("\n─── Global Sensitivity Analysis (MEC8211) ───")
-    print(f"{'Param':<8} {'Spearman':>10}  {'SRC':>10}  {'SRRC':>10}")
-    print("-" * 50)
-    for p in params:
-        print(f"{p:<8} {spearman_r[p]:>+10.4f}  {SRC[p]:>+10.4f}  {SRRC[p]:>+10.4f}")
+    # SRRC bar chart avec étendue épistémique
+    srrc_means  = [np.mean([r["SRRC"][p] for r in case_results]) for p in params]
+    srrc_mins   = [np.min( [r["SRRC"][p] for r in case_results]) for p in params]
+    srrc_maxs   = [np.max( [r["SRRC"][p] for r in case_results]) for p in params]
+    srrc_lowers = [m - lo for m, lo in zip(srrc_means, srrc_mins)]
+    srrc_uppers = [hi - m  for m, hi in zip(srrc_means, srrc_maxs)]
 
-    return {"spearman": spearman_r, "SRC": SRC, "SRRC": SRRC} 
+    fig, ax = plt.subplots(figsize=(7, 4))
+    ax.bar(x_pos, srrc_means, color="seagreen", alpha=0.85,
+           label="Moyenne sur l'ensemble des cas épistémiques")
+    ax.errorbar(x_pos, srrc_means,
+                yerr=[srrc_lowers, srrc_uppers],
+                fmt="none", color="black", capsize=6, linewidth=1.5,
+                label="Étendue couvrant l'ensemble des cas épistémiques")
+
+    for xi, m in zip(x_pos, srrc_means):
+        ax.text(xi, m + (0.01 if m >= 0 else -0.03),
+                f"{m:+.3f}", ha="center", va="bottom", fontsize=9)
+
+    ax.axhline(0, color="black", lw=0.8)
+    ax.set_xticks(x_pos)
+    ax.set_xticklabels([labels[p] for p in params], fontsize=11)
+    ax.set_ylabel("SRRC")
+    ax.set_title("Analyse de sensibilité globale — SRRC\n"
+                "(bars = moyenne, moustaches = l'étendue couvrant l'ensemble des cas épistémique)")
+    ax.legend(fontsize=9)
+    ax.grid(axis="y", alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+    # PLOT 4 — Rank-R² par cas épistémique (complétude de SRRC / indicateur d'interaction)
+    case_labels = [r["label"] for r in case_results]
+    rank_R2s    = [r["rank_R2"] for r in case_results]
+    colors_r2   = ["seagreen" if v > 0.9 else ("gold" if v > 0.7 else "tomato")
+                   for v in rank_R2s]
+
+    fig, ax = plt.subplots(figsize=(7, 4))
+    bars = ax.bar(range(n_cases), rank_R2s, color=colors_r2, alpha=0.85, edgecolor="black")
+
+    ax.axhline(0.9, color="seagreen", lw=1.5, linestyle="--",
+               label="0.9 — interactions négligeables")
+    ax.axhline(0.7, color="gold",     lw=1.5, linestyle="--",
+               label="0.7 — interactions modérées")
+
+    for xi, v in enumerate(rank_R2s):
+        ax.text(xi, v + 0.01, f"{v:.3f}", ha="center", va="bottom", fontsize=9)
+
+    ax.set_xticks(range(n_cases))
+    ax.set_xticklabels(case_labels, rotation=15, ha="right", fontsize=9)
+    ax.set_ylim(0, 1.05)
+    ax.set_ylabel("Rank-R²  (∑ SRRC²)")
+    ax.set_title("Rank-R² par cas\n"
+                 "(controle de complétude de SRRC — valeur faible → effets d'interaction → considérer Sobol)")
+    ax.legend(fontsize=9)
+    ax.grid(axis="y", alpha=0.3)
+    plt.tight_layout()
+    plt.show()
+
+    # Console summary
+    print("\n--- GSA agrégué (moyenne sur les cas épistémiques) ---")
+    print(f"{'Param':<8} {'Spearman (mean)':>16}  {'SRRC (mean)':>12}")
+    print("-" * 42)
+    for p, sm, rm in zip(params, spearman_means, srrc_means):
+        print(f"{p:<8} {sm:>+16.4f}  {rm:>+12.4f}")
+
+    mean_R2 = np.mean(rank_R2s)
+    print(f"\nMean Rank-R²: {mean_R2:.4f} — ", end="")
+    if mean_R2 > 0.9:
+        print("SRRC/Spearman sont fiables, interactions négligeables")
+    elif mean_R2 > 0.7:
+        print("interactions modérées, à interpréter avec prudence")
+    else:
+        print("interactions fortes présentes, indices de Sobol recommandés")
+
+    return {
+        "per_case":      case_results,
+        "spearman_mean": dict(zip(params, spearman_means)),
+        "SRRC_mean":     dict(zip(params, srrc_means)),
+        "rank_R2_mean":  mean_R2,
+    }
+# Global Sensitivity Analysis:
+# def global_sensitivity_analysis(pbox_results):
+#     """
+#     Méthods utilisées:
+#         - Spearman rank correlation  (Oberkampf & Roy)
+#         - SRRC: Standardized Rank Regression Coefficients (rank-based SRC)
+#         - Vérification de la complétude de SRRC via le R² de rang
+
+#     Entrées:
+#         pbox_results["sens_data"] : pooled aleatory samples across epistemic cases
+#     """
+
+#     from scipy.stats import spearmanr, rankdata
+#     from numpy.linalg import lstsq
+
+#     sens_data = pbox_results["sens_data"]
+#     Q = sens_data["Q"]
+#     params = ["C0", "u_max", "L", "H"]
+#     labels = {"C0": r"$C_0$", "u_max": r"$u_{\max}$", "L": r"$L$", "H": r"$H$"}
+
+#     # Spearman rank correlations
+#     spearman_r = {}
+#     for p in params:
+#         rho, _ = spearmanr(sens_data[p], Q)
+#         spearman_r[p] = rho
+
+#     # SRC
+#     X = np.column_stack([sens_data[p] for p in params])
+#     X_std = (X - X.mean(0)) / X.std(0)
+#     Q_std = (Q - Q.mean()) / Q.std()
+
+#     beta_SRC, _, _, _ = lstsq(X_std, Q_std, rcond=None)
+#     SRC = dict(zip(params, beta_SRC))
+
+#     # SRRC (rank-based SRC)
+#     Xr = np.column_stack([rankdata(sens_data[p]) for p in params])
+#     Xr_std = (Xr - Xr.mean(0)) / Xr.std(0)
+#     Qr_std = (rankdata(Q) - np.mean(rankdata(Q))) / np.std(rankdata(Q))
+
+#     beta_SRRC, _, _, _ = lstsq(Xr_std, Qr_std, rcond=None)
+#     SRRC = dict(zip(params, beta_SRRC))
+
+#     # Plots
+#     fig, axes = plt.subplots(1, len(params), figsize=(14, 4), sharey=True)
+#     fig.suptitle("Global SA — Spearman + SRC + SRRC", fontsize=12, fontweight="bold")
+
+#     for ax, p in zip(axes, params):
+#         ax.scatter(sens_data[p], Q, s=10, alpha=0.35, color="steelblue")
+#         ax.set_xlabel(labels[p], fontsize=11)
+#         ax.set_title(f"$\\rho$={spearman_r[p]:+.3f}\nSRC={SRC[p]:+.3f}", fontsize=9)
+#         ax.grid(alpha=0.3)
+#     axes[0].set_ylabel("$Q_c$  (mol/m²)")
+
+#     plt.tight_layout()
+#     plt.show()
+
+#     # ───────────── Summary bar chart ─────────────
+#     width = 0.25
+#     x_pos = np.arange(len(params))
+
+#     fig, ax = plt.subplots(figsize=(8, 4))
+#     ax.bar(x_pos - width, [spearman_r[p] for p in params],
+#            width, label="Spearman ρ", color="darkorange", alpha=0.85)
+#     ax.bar(x_pos, [SRC[p] for p in params],
+#            width, label="SRC", color="steelblue", alpha=0.85)
+#     ax.bar(x_pos + width, [SRRC[p] for p in params],
+#            width, label="SRRC", color="seagreen", alpha=0.85)
+
+#     ax.axhline(0, color="black", lw=0.8)
+#     ax.set_xticks(x_pos)
+#     ax.set_xticklabels([labels[p] for p in params], fontsize=11)
+#     ax.set_ylabel("Sensitivity coefficient")
+#     ax.set_title("Global Sensitivity Analysis")
+#     ax.legend()
+#     ax.grid(axis="y", alpha=0.3)
+#     plt.tight_layout()
+#     plt.show()
+
+#     # ───────────── Console output ─────────────
+#     print("\n─── Global Sensitivity Analysis (MEC8211) ───")
+#     print(f"{'Param':<8} {'Spearman':>10}  {'SRC':>10}  {'SRRC':>10}")
+#     print("-" * 50)
+#     for p in params:
+#         print(f"{p:<8} {spearman_r[p]:>+10.4f}  {SRC[p]:>+10.4f}  {SRRC[p]:>+10.4f}")
+
+#     return {"spearman": spearman_r, "SRC": SRC, "SRRC": SRRC} 
 
 #Validation
 def Q_c_empirique(prm):

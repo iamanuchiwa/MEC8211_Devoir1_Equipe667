@@ -177,33 +177,56 @@ if "5" in analyses:
     # -------------------------
     # 3) P-BOX (MC and LHS)
     # -------------------------
-    print("\n=== P-BOX USING MC ===")
-    pbox_mc = pbox(prm_base, N=200, nx=nx, ny=ny, seed=10, method="MC")
+    print("\n=== P-BOX AVEC MC ===")
+    start    = timer()
+    pbox_mc  = pbox(prm_base, N=200, nx=nx, ny=ny, seed=10, method="MC")
+    t_pbox_mc = timer() - start
+    print(f"Runtime p-box (MC):  {t_pbox_mc:.2f} s")
 
-    print("\n=== P-BOX USING LHS ===")
-    pbox_lhs = pbox(prm_base, N=200, nx=nx, ny=ny, seed=10, method="LHS")
+    print("\n=== P-BOX AVEC LHS ===")
+    start     = timer()
+    pbox_lhs  = pbox(prm_base, N=200, nx=nx, ny=ny, seed=10, method="LHS")
+    t_pbox_lhs = timer() - start
+    print(f"Runtime p-box (LHS): {t_pbox_lhs:.2f} s")
 
-
+    plt.close('all')
     # -------------------------
     # 4) GLOBAL SENSITIVITY
     # -------------------------
-    print("\n=== GLOBAL SENSITIVITY (MC PBOX) ===")
-    sa_mc = global_sensitivity_analysis(pbox_mc)
+    print("\n=== GLOBAL SENSITIVITY (MC P-BOX) ===")
+    start  = timer()
+    sa_mc  = global_sensitivity_analysis(pbox_mc)
+    t_sa_mc = timer() - start
+    plt.close('all')
+    print(f"Runtime GSA (MC):  {t_sa_mc:.2f} s")
 
-    print("\n=== GLOBAL SENSITIVITY (LHS PBOX) ===")
-    sa_lhs = global_sensitivity_analysis(pbox_lhs)
+    print("\n=== GLOBAL SENSITIVITY (LHS P-BOX) ===")
+    start   = timer()
+    sa_lhs  = global_sensitivity_analysis(pbox_lhs)
+    t_sa_lhs = timer() - start
+    print(f"Runtime GSA (LHS): {t_sa_lhs:.2f} s")
 
-    # print("\n=== MEAN / STD ===")
-    # mc_mean, mc_std = mc_stats(Q_mc)
-    # lhs_mean, lhs_std = mc_stats(Q_lhs)
-    # print(f"MC:  mean={mc_mean:.4e}, std={mc_std:.4e}")
-    # print(f"LHS: mean={lhs_mean:.4e}, std={lhs_std:.4e}")
 
-    # print("\n=== MOMENT METHOD (OPTIONAL) ===")
-    # mom_mean, mom_std, sens = moment_method_mean_std(prm_base, nx, ny)
-    # print(f"MoM mean={mom_mean:.4e}, std≈{mom_std:.4e}")
-    # print("Sensitivities:", sens)
+    # 5) MC vs LHS Ccomparaison
+    print("\n=== MC vs LHS COMPARISON DE SENSIBILITÉ ===")
+    params = ["C0", "u_max", "L", "H"]
+    print(f"\n{'Param':<8} {'Spearman MC':>13} {'Spearman LHS':>14} {'Δ':>8}"
+          f"  {'SRRC MC':>10} {'SRRC LHS':>10} {'Δ':>8}")
+    print("-" * 80)
+    for p in params:
+        sp_mc  = sa_mc["spearman_mean"][p]
+        sp_lhs = sa_lhs["spearman_mean"][p]
+        sr_mc  = sa_mc["SRRC_mean"][p]
+        sr_lhs = sa_lhs["SRRC_mean"][p]
+        print(f"{p:<8} {sp_mc:>+13.4f} {sp_lhs:>+14.4f} {abs(sp_mc-sp_lhs):>8.4f}"
+              f"  {sr_mc:>+10.4f} {sr_lhs:>+10.4f} {abs(sr_mc-sr_lhs):>8.4f}")
 
+    print(f"\nRank-R² — MC:  {sa_mc['rank_R2_mean']:.4f}")
+    print(f"Rank-R² — LHS: {sa_lhs['rank_R2_mean']:.4f}")
+
+    # Overall runtime
+    t_total = t_pbox_mc + t_pbox_lhs + t_sa_mc + t_sa_lhs
+    print(f"\nTotal runtime (p-box + GSA): {t_total:.1f} s")
 
 #Validation
 
