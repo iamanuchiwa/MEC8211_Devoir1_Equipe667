@@ -307,9 +307,8 @@ def lhs_norm_uni(N,prm_base, seed=42):
     Génère un échantillonnage Latin Hypercube pour:
     - Gaussien: C0, u_max, L, H
     """
-    np.random.seed(seed)
     d = 4  # nr. variables aléatoires (C0, u_max, L, H)
-    lhs = np.array(lhsmdu.sample(N, d, randomSeed=seed)).T
+    lhs = np.array(lhsmdu.sample(d, N, randomSeed=seed)).T
     # if lhs.shape[0] == 4:
     #     lhs = lhs.T
     eps = 1e-12
