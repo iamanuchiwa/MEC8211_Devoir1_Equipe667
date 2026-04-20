@@ -11,17 +11,6 @@ try:
 except:
     pass
 
-# J'ai mis ca dans levesque_fonctions pour éviter les imports circulaires:) 
-# class parametres():
-#     C0 = 1     #[mol]
-#     u_max = 1  #[m/s]
-#     L = 10      #[m]
-#     H = 10      #[m]
-#     P = 1      #[m]
-#     Pe = 0.5
-#     Da = 50
-# prm = parametres()
-
 analyses = "5"
 
 """
