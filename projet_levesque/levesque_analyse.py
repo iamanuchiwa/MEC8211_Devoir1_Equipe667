@@ -11,7 +11,7 @@ try:
 except:
     pass
 
-analyses = "5"
+analyses = "6"
 
 """
 1 - Profil de température
